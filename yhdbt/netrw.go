@@ -6,8 +6,9 @@ import (
 	"unsafe"
 )
 
-const (
-	comm_flag = 0x12348765
+var (
+	header_len = 8
+	comm_flag  = 0x12348765
 )
 
 func sendMesssage(conn net.Conn, msg []byte) error {
@@ -39,8 +40,8 @@ func recvMessage(conn net.Conn, totallen int) ([]byte, error) {
 	return buf, nil
 }
 
-func RecvCommon(conn net.Conn) ([]byte, error) {
-	head, err := recvMessage(conn, 8)
+func RecvCommond(conn net.Conn) ([]byte, error) {
+	head, err := recvMessage(conn, header_len)
 	if err != nil {
 		return []byte{}, fmt.Errorf(`[NET] recv header error:`, err)
 	}
@@ -54,4 +55,18 @@ func RecvCommon(conn net.Conn) ([]byte, error) {
 		return []byte{}, fmt.Errorf(`[NET] recv content error:`, err)
 	}
 	return content, nil
+}
+
+func SendCommond(conn net.Conn, content []byte) error {
+	datalen := len(content)
+	sendBuf := make([]byte, header_len+datalen)
+
+	*(*uint32)(unsafe.Pointer(&sendBuf[0])) = *(*uint32)(unsafe.Pointer(&comm_flag))
+	*(*int32)(unsafe.Pointer(&sendBuf[4])) = *(*int32)(unsafe.Pointer(&datalen))
+
+	copy(sendBuf[header_len:], content)
+	if err := sendMesssage(conn, sendBuf); err != nil {
+		return fmt.Errorf(`[NET] send content error %v`, err)
+	}
+	return nil
 }

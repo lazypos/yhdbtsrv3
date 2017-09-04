@@ -113,7 +113,7 @@ func (this *RegistServer) CLogin(rw http.ResponseWriter, req *http.Request) {
 		fmt.Fprintf(rw, `{"error":"%d"}`, code)
 		return
 	}
-	GLogin.SaveLoginKey(loginKey)
+	GLogin.SaveLoginKey(loginKey, uid)
 	fmt.Fprintf(rw, rpy_login_fmt, err_code_ok, loginKey)
 }
 
@@ -126,6 +126,7 @@ func (this *RegistServer) Login(username, pass string) (int, string, string) {
 		log.Println(`[REGIST] user not exist.`, username)
 		return err_code_noexist, "", ""
 	}
+
 	loginkey := fmt.Sprintf(`%x`, md5.Sum([]byte(username+pass+time.Now().String())))
 	return err_code_ok, string(uid[:]), loginkey
 }

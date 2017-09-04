@@ -2,7 +2,6 @@ package yhdbt
 
 import (
 	"net"
-	"time"
 )
 
 type PlayerInfo struct {

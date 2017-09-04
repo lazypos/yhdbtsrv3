@@ -27,11 +27,25 @@ func (this *LoginServer) Routine_Listen(serverfd net.Listener) {
 			time.Sleep(time.Second)
 		} else {
 			log.Println(`[SERVER] recv connect`, conn.RemoteAddr().String())
-			go this.processConn()
+			go this.processConn(conn)
 		}
 	}
 }
 
-func (this *LoginServer) processConn() {
+func (this *LoginServer) processConn(conn net.Conn) {
+
+	content, err := RecvCommond(conn)
+	if err != nil {
+		log.Println(`[SERVER] recv error:`, err)
+		conn.Close()
+		return
+	}
+
+	uid := GLogin.OnConnect(string(content[:]))
+	if len(uid) == 0 {
+		log.Println(`[SERVER] login error: can not find the loginkey.`)
+		conn.Close()
+		return
+	}
 
 }
