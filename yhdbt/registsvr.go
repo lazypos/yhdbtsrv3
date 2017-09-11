@@ -20,6 +20,7 @@ const (
 	rpy_login_fmt = `{"error":"%d", "cookie":"%s"}`
 )
 
+//用户注册服务器
 type RegistServer struct {
 	muxRegist sync.Mutex
 }
@@ -33,6 +34,7 @@ func (this *RegistServer) Start() error {
 	return http.ListenAndServe(":51888", nil)
 }
 
+//检查用户密码
 func (this *RegistServer) CheckUserPass(user, pass string) int {
 
 	if err := CheckUser(user); err != nil {
@@ -46,6 +48,7 @@ func (this *RegistServer) CheckUserPass(user, pass string) int {
 	return err_code_ok
 }
 
+//处理注册请求
 func (this *RegistServer) CRegist(rw http.ResponseWriter, req *http.Request) {
 	user := req.FormValue("user")
 	pass := req.FormValue("pass")
@@ -57,6 +60,7 @@ func (this *RegistServer) CRegist(rw http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(rw, `{"error":"%d"}`, this.Regist(user, pass))
 }
 
+//处理充值请求
 func (this *RegistServer) CPayCenter(rw http.ResponseWriter, req *http.Request) {
 	player := req.FormValue("player")
 	ptype := req.FormValue("paytype")
@@ -67,6 +71,7 @@ func (this *RegistServer) CPayCenter(rw http.ResponseWriter, req *http.Request) 
 	log.Println(player, payNum, checkid, sessionid)
 }
 
+//注册逻辑函数
 func (this *RegistServer) Regist(username, pass string) int {
 	this.muxRegist.Lock()
 	defer this.muxRegist.Unlock()
@@ -101,6 +106,7 @@ func (this *RegistServer) Regist(username, pass string) int {
 	return err_code_ok
 }
 
+//处理登陆请求
 func (this *RegistServer) CLogin(rw http.ResponseWriter, req *http.Request) {
 	user := req.FormValue("user")
 	pass := req.FormValue("pass")
@@ -117,6 +123,7 @@ func (this *RegistServer) CLogin(rw http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(rw, rpy_login_fmt, err_code_ok, loginKey)
 }
 
+//登陆逻辑
 func (this *RegistServer) Login(username, pass string) (int, string, string) {
 	this.muxRegist.Lock()
 	defer this.muxRegist.Unlock()

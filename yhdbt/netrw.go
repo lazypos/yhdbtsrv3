@@ -11,6 +11,7 @@ var (
 	comm_flag  = 0x12348765
 )
 
+//基本发送函数
 func sendMesssage(conn net.Conn, msg []byte) error {
 	sendlen := 0
 	for sendlen < len(msg) {
@@ -25,6 +26,7 @@ func sendMesssage(conn net.Conn, msg []byte) error {
 	return nil
 }
 
+//基本接收函数
 func recvMessage(conn net.Conn, totallen int) ([]byte, error) {
 	recvlen := 0
 	buf := make([]byte, totallen)
@@ -40,6 +42,7 @@ func recvMessage(conn net.Conn, totallen int) ([]byte, error) {
 	return buf, nil
 }
 
+//接受一个命令
 func RecvCommond(conn net.Conn) ([]byte, error) {
 	head, err := recvMessage(conn, header_len)
 	if err != nil {
@@ -57,6 +60,7 @@ func RecvCommond(conn net.Conn) ([]byte, error) {
 	return content, nil
 }
 
+//发送一个命令
 func SendCommond(conn net.Conn, content []byte) error {
 	datalen := len(content)
 	sendBuf := make([]byte, header_len+datalen)
