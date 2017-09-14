@@ -69,31 +69,31 @@ func (this *HallManger) Routine_Clean() {
 
 }
 
-// <0创建桌子，0加入任意桌子，>0加入桌子
-func (this *HallManger) AddDesk(deskNum int, p *PlayerInfo) int {
+// deskNum: <0创建桌子，0加入任意桌子，>0加入桌子 返回桌号 座位号
+func (this *HallManger) AddDesk(deskNum int, p *PlayerInfo) (*DeskMnager, int) {
 	this.muxHall.Lock()
 	defer this.muxHall.Unlock()
 
 	//带桌号
 	if deskNum > 0 {
 		if deskNum > 100 {
-			return err_desk_noexist
+			return nil, -1
 		}
 		desk, ok := this.MapDesks[deskNum]
 		if ok {
-			if desk.AddPlayer(p) != nil {
-				return 0
+			site := desk.AddPlayer(p)
+			if site != -1 {
+				return nil, site
 			}
-			return err_desk_full
 		}
-		return err_desk_noexist
+		return nil, -1
 	}
 	//任意桌子
 	if deskNum == 0 {
 		//任意桌子
-		for k, desk := range this.MapDesks {
-			if desk.AddPlayer(p) == nil {
-				return k
+		for _, desk := range this.MapDesks {
+			if s := desk.AddPlayer(p); s != -1 {
+				return desk, s
 			}
 		}
 	}
@@ -103,10 +103,31 @@ func (this *HallManger) AddDesk(deskNum int, p *PlayerInfo) int {
 		if !ok {
 			desk := &DeskMnager{}
 			desk.InitDesk(i)
-			desk.AddPlayer(p)
+			s := desk.AddPlayer(p)
 			this.MapDesks[deskNum] = desk
-			return i
+			return desk, s
 		}
 	}
-	return err_desk_full
+	return nil, -1
+}
+
+func (this *HallManger) BroadDeskInfo(deskNum int) {
+	this.muxHall.Lock()
+	defer this.muxHall.Unlock()
+	desk, _ := this.MapDesks[deskNum]
+	if desk != nil {
+		desk.ToBroadInfo()
+	}
+}
+
+func (this *HallManger) LeaveDesk(p *PlayerInfo) {
+	this.muxHall.Lock()
+	defer this.muxHall.Unlock()
+	deks, _ := this.MapDesks[p.DeskNum]
+	if deks != nil {
+		if deks.LeavePlayer(p) {
+			delete(this.MapDesks, p.DeskNum)
+		}
+	}
+	p.DeskNum = -1
 }

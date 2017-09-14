@@ -26,6 +26,7 @@ func (this *TCPServer) Start(port string) error {
 func (this *TCPServer) Routine_Listen(serverfd net.Listener) {
 	defer serverfd.Close()
 	for {
+
 		if conn, err := serverfd.Accept(); err != nil {
 			log.Println(`[SERVER] accept error`, err)
 			time.Sleep(time.Second)

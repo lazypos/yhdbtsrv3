@@ -19,8 +19,11 @@ type PlayerInfoEx struct {
 	chBroad   chan *Msg
 	msgPool   *sync.Pool
 	muxPlayer sync.Mutex
+	ArrCards  []int //手牌
 
-	ArrCards []int //手牌
+	Ready   int
+	DeskNum int
+	SiteNum int
 }
 
 //玩家

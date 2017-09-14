@@ -13,6 +13,7 @@ const (
 	pay_type_full = "4"
 )
 
+//检查用户名合法性
 func CheckUser(user string) error {
 	if !regexp.MustCompile(`^[0-9a-zA-Z]{6,16}$`).MatchString(user) {
 		return fmt.Errorf(`user format error.`)
@@ -20,6 +21,7 @@ func CheckUser(user string) error {
 	return nil
 }
 
+//检查密码合法性
 func CheckPass(pass string) error {
 	passup := strings.ToUpper(pass)
 	if !regexp.MustCompile(`^[0-9A-Z]{32}$`).MatchString(passup) {
@@ -28,6 +30,7 @@ func CheckPass(pass string) error {
 	return nil
 }
 
+//检查昵称合法性
 func CheckNick(nickname string) error {
 	if len(nickname) < 6 || len(nickname) > 14 {
 		return fmt.Errorf(`nickname length error.`)
