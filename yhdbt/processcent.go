@@ -16,6 +16,8 @@ const (
 	cmd_query_rank    = 0x1003 //查询排行
 	cmd_desk_ready    = 0x1004 //举手准备
 	cmd_desk_leave    = 0x1005 //离开桌子
+	cmd_heart         = 0x1006 //心跳
+	cmd_put_cards     = 0x1007 //玩家出牌
 )
 
 const (
@@ -51,15 +53,20 @@ const (
 	//{"site":"3","name":"%s","ready":"%d","socre":"%d","win":"%d","lose":"%d","run":"%d"}
 	// 游戏开始
 	fmt_start = `{"opt":"start","cards":"%s"}`
-	fmt_run   = `{"opt":"run","site":"%d","name":"%s"}`
-	fmt_over  = `{"opt":"over","info":[
-                    {"site":"0","name":"%s","result":"%d"},
-                    {"site":"1","name":"%s","result":"%d"},
-                    {"site":"2","name":"%s","result":"%d"},
-                    {"site":"3","name":"%s","result":"%d"}]}`
-	fmt_game_put   = `{"opt":"game","per":"%d","cards":"%s","surplus":"%d","score":"%d","now":"%d","must":"%d"}`
-	fmt_score      = `{"opt":"score","p0":"%d","p1":"%d"}`
-	fmt_error      = `{"opt":"error"}`
+	// 玩家逃跑 扣多少分
+	fmt_run = `{"opt":"run","site":"%d","name":"%s","score":"%d"}`
+	// 游戏结束
+	fmt_game_over     = `{"opt":"over","info":[%s]}`
+	fmt_game_over_sub = `{"site":"%d","result":"%d"},`
+	//{"site":"0","name":"%s","result":"%d"},
+	//{"site":"1","name":"%s","result":"%d"},
+	//{"site":"2","name":"%s","result":"%d"},
+	//{"site":"3","name":"%s","result":"%d"}
+	// 玩家出牌 前一家出牌，剩余，桌面分数，现在出牌，是否必须出
+	fmt_game_put = `{"opt":"game","per":"%d","cards":"%s","surplus":"%d","score":"%d","now":"%d","must":"%d"}`
+	fmt_score    = `{"opt":"score","p0":"%d","p1":"%d"}`
+	fmt_error    = `{"opt":"error"}`
+	// 玩家进入桌子长时间不准备 <- 玩家收到后发送离开桌子的请求
 	fmt_timeout    = `{"opt":"timeout"}`
 	fmt_playerinfo = `{"opt":"","win0":"","lose0":"","run0":""}`
 )
@@ -100,6 +107,10 @@ func (this *ProcessCent) ProcessCmd(cmd int, text string, p *PlayerInfo) error {
 		return this.process_ready(text, p)
 	case cmd_desk_leave:
 		return this.process_leave(text, p)
+	case cmd_heart:
+		return this.process_heart(text, p)
+	case cmd_put_cards:
+		return this.process_put_cards(text, p)
 	}
 	return fmt.Errorf(`[PROCESS] unknow cmd`)
 }
@@ -161,4 +172,19 @@ func (this *ProcessCent) process_leave(text string, p *PlayerInfo) error {
 	GHall.LeaveDesk(p)
 	GHall.BroadDeskInfo(deskNum)
 	return nil
+}
+
+//心跳
+func (this *ProcessCent) process_heart(text string, p *PlayerInfo) error {
+	p.LastOnline = time.Now().Unix()
+	return nil
+}
+
+func (this *ProcessCent) process_put_cards(text string, p *PlayerInfo) error {
+	desk := GHall.GetDesk(p.DeskNum)
+	if desk != nil {
+		desk.PutMessage(text, p.DeskNum)
+		return nil
+	}
+	return fmt.Errorf(`[PROCESS] desk error: no desk`, p.DeskNum)
 }

@@ -16,13 +16,14 @@ var GKicked = &KickedManager{}
 
 func (this *KickedManager) Start() {
 	this.chKick = make(chan *PlayerInfo, 100)
+	go this.Routine_workTick()
 }
 
 func (this *KickedManager) AddTick(p *PlayerInfo) {
 	this.chKick <- p
 }
 
-func (this *KickedManager) workTick() {
+func (this *KickedManager) Routine_workTick() {
 	for {
 		select {
 		case player := <-this.chKick:

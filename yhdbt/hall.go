@@ -46,12 +46,15 @@ func (this *HallManger) LeaveHall(p *PlayerInfo) {
 // 定时广播消息
 func (this *HallManger) Routine_Broadcast() {
 	ticker := time.NewTicker(time.Second * 5)
+	breakTicker := time.NewTicker(time.Second * 10)
 	for {
 		select {
 		case <-ticker.C:
 			this.broadHallInfo() // 广播大厅基本信息
 		case msg := <-this.chBroad:
 			this.broadMessage(msg) // 广播实时信息
+		case <-breakTicker.C:
+			this.checkBreak() // 断线检测
 		}
 	}
 }
@@ -64,9 +67,22 @@ func (this *HallManger) broadHallInfo() {
 
 }
 
-//定时清理无效的桌子
-func (this *HallManger) Routine_Clean() {
+//断线检测
+func (this *HallManger) checkBreak() {
+	this.muxHall.Lock()
+	defer this.muxHall.Unlock()
 
+	nowTime := time.Now().Unix()
+	for _, p := range this.MapPlayers {
+		if nowTime-p.LastOnline > 180 {
+			if p.DeskNum > 0 {
+				desk := this.MapDesks[p.DeskNum]
+				desk.LeavePlayer(p)
+			} else {
+				this.LeaveHall(p)
+			}
+		}
+	}
 }
 
 // deskNum: <0创建桌子，0加入任意桌子，>0加入桌子 返回桌号 座位号
@@ -126,8 +142,15 @@ func (this *HallManger) LeaveDesk(p *PlayerInfo) {
 	deks, _ := this.MapDesks[p.DeskNum]
 	if deks != nil {
 		if deks.LeavePlayer(p) {
+			// 桌子空了就删掉
 			delete(this.MapDesks, p.DeskNum)
 		}
 	}
 	p.DeskNum = -1
+}
+
+func (this *HallManger) GetDesk(Dnum int) *DeskMnager {
+	this.muxHall.Lock()
+	defer this.muxHall.Unlock()
+	return this.MapDesks[Dnum]
 }
