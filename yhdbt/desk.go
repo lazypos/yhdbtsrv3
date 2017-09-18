@@ -2,6 +2,7 @@ package yhdbt
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
@@ -17,13 +18,32 @@ type DeskMsg struct {
 	Site int
 }
 
+type DeskInfo struct {
+	Site  int32  `json:"site"`  //位号
+	Type  string `json:"type"`  //类型
+	Cards string `json:"cards"` //出牌
+}
+
+// 游戏相关
+type DeskMnagerEx struct {
+	baseScore   int   //基础分
+	nLastPutSit int   //上一轮出牌玩家
+	nNowPutSit  int   //当前出牌玩家
+	nLastCards  []int //上一轮出的牌
+	nDeskScore  int   //桌面分数
+	nP0Score    int   //甲方得分
+	nP1Score    int   //乙方得分
+	RunCounts   int   //出完人数
+}
+
 //桌子
 type DeskMnager struct {
+	DeskMnagerEx
+
 	arrPlayers  []*PlayerInfo //玩家列表
 	DeskNum     int           //桌好
 	bPlaying    bool          //是否在游戏
 	MapAddTimes map[int]int64 //玩家加入桌子的时间
-	baseScore   int           //基础分
 
 	muxDesk     sync.Mutex
 	chDeskBoard chan bool
@@ -49,6 +69,7 @@ func (this *DeskMnager) AddPlayer(p *PlayerInfo) int {
 		if v == nil {
 			log.Println(`[DESK] player`, p.NickName, `add desk:`, this.DeskNum, `site:`, i)
 			p.DeskNum = this.DeskNum
+			p.SiteNum = i
 			this.arrPlayers[i] = p
 			this.MapAddTimes[i] = time.Now().Unix()
 			return i
@@ -61,6 +82,10 @@ func (this *DeskMnager) AddPlayer(p *PlayerInfo) int {
 func (this *DeskMnager) LeavePlayer(p *PlayerInfo) bool {
 	this.muxDesk.Lock()
 	defer this.muxDesk.Unlock()
+
+	defer func() {
+		p.SiteNum = -1
+	}()
 
 	empty := true
 	if !this.bPlaying { // 如果游戏还没开始
@@ -106,6 +131,7 @@ func (this *DeskMnager) playerRun(p *PlayerInfo) {
 func (this *DeskMnager) gameOver(run bool, arrRst []int) {
 	//更新状态
 	this.bPlaying = false
+	this.nLastPutSit = -1
 	for i, p := range this.arrPlayers {
 		this.MapAddTimes[i] = 0
 		if p != nil {
@@ -152,8 +178,99 @@ func (this *DeskMnager) Routine_Board() {
 	}
 }
 
-func (this *DeskMnager) ProcessMsg(*DeskMsg) {
+func (this *DeskMnager) ProcessMsg(m *DeskMsg) {
+	this.muxDesk.Lock()
+	defer this.muxDesk.Unlock()
 
+	if !this.bPlaying {
+		return
+	}
+
+	deskmsg := &DeskInfo{}
+	if err := json.Unmarshal([]byte(m.Text), deskmsg); err != nil {
+		log.Println(`[DESK] content error:`, err)
+		this.playerRun(this.arrPlayers[m.Site])
+		return
+	}
+
+	must := 0
+	next := m.Site
+	putCards := StringTointArr(deskmsg.Cards)
+	if len(putCards) == 0 { // 玩家没牌
+		for i := 0; i < 4; i++ {
+			// 看下一家谁出
+			next = this.GetNextPut(next)
+			// 大了一轮，得分
+			if next == this.nLastPutSit {
+				must = 1
+				this.nLastCards = putCards
+				this.CaluScore()
+				//如果出完了，对家出
+				if this.arrPlayers[next].RunNum != -1 {
+					next = (next + 2) % 4
+					break
+				}
+			}
+			// 下一家还没出完的出牌
+			if this.arrPlayers[next].RunNum != -1 {
+				break
+			}
+		}
+	} else {
+		// 出牌错误, 强制踢掉
+		if !IsBigger(this.nLastCards, putCards) {
+			log.Println(`[DESK] put cards error, litter than per.`)
+			this.playerRun(this.arrPlayers[m.Site])
+			return
+		}
+		score, err := this.arrPlayers[m.Site].PutCards(putCards)
+		if err != nil {
+			log.Println(`[DESK] put cards error, 手牌不符合.`)
+			this.playerRun(this.arrPlayers[m.Site])
+			return
+		}
+
+		//出完牌
+		if len(this.arrPlayers[m.Site].ArrCards) == 0 {
+			this.arrPlayers[m.Site].RunNum = this.RunCounts
+			this.RunCounts++
+			log.Println(`[DESK]`, m.Site, "over")
+		}
+		this.nDeskScore += score
+		for i := 0; i < 4; i++ {
+			next = this.GetNextPut(next)
+			if this.arrPlayers[next].RunNum != -1 {
+				break
+			}
+		}
+		this.nLastCards = putCards
+	}
+
+	this.nNowPutSit = next
+	this.nLastPutSit = next
+	for _, p := range this.arrPlayers {
+		p.SendMessage(fmt.Sprintf(fmt_game_put, m.Site, deskmsg.Cards, len(this.arrPlayers[m.Site].ArrCards), this.nDeskScore, next, must))
+		p.SendMessage(fmt.Sprintf(fmt_score, this.nP0Score, this.nP1Score))
+	}
+}
+
+func (this *DeskMnager) GetNextPut(site int) int {
+	for i := 1; i < 4; i++ {
+		next := (site + i) % 4
+		return next
+	}
+	return -1
+}
+
+func (this *DeskMnager) CaluScore() {
+	this.nLastCards = []int{}
+
+	if this.nLastPutSit%2 == 0 {
+		this.nP0Score += this.nDeskScore
+	} else {
+		this.nP1Score += this.nDeskScore
+	}
+	this.nDeskScore = 0
 }
 
 //广播桌子信息
@@ -185,5 +302,23 @@ func (this *DeskMnager) KickPlayer() {
 		if p != nil && v != 0 && nowtime-v > 60 && p.Ready == 0 {
 			p.SendMessage(fmt.Sprintf(fmt_timeout))
 		}
+	}
+}
+
+// 游戏开始
+func (this *DeskMnager) GmeStart() {
+	this.muxDesk.Lock()
+	defer this.muxDesk.Unlock()
+
+	this.nLastPutSit = -1
+	this.nLastCards = []int{}
+	this.bPlaying = true
+	this.nDeskScore = 0
+	this.nP0Score = 0
+	this.nP1Score = 0
+	this.RunCounts = 0
+
+	for _, v := range this.arrPlayers {
+		v.RunNum = -1
 	}
 }

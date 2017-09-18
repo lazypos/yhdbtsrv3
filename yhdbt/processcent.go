@@ -180,10 +180,11 @@ func (this *ProcessCent) process_heart(text string, p *PlayerInfo) error {
 	return nil
 }
 
+//出牌
 func (this *ProcessCent) process_put_cards(text string, p *PlayerInfo) error {
 	desk := GHall.GetDesk(p.DeskNum)
 	if desk != nil {
-		desk.PutMessage(text, p.DeskNum)
+		desk.PutMessage(text, p.SiteNum)
 		return nil
 	}
 	return fmt.Errorf(`[PROCESS] desk error: no desk`, p.DeskNum)

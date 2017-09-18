@@ -24,6 +24,7 @@ type PlayerInfoEx struct {
 	Ready   int
 	DeskNum int
 	SiteNum int
+	RunNum  int
 }
 
 //玩家
@@ -119,4 +120,9 @@ func (this *PlayerInfo) ReInit(conn net.Conn) {
 	this.Conn = conn
 	this.Session = fmt.Sprintf(`%x`, md5.Sum([]byte(time.Now().String()+this.Uid)))
 	this.LastOnline = time.Now().Unix()
+}
+
+//玩家出牌
+func (this *PlayerInfo) PutCards(cards []int) (int, error) {
+	return 0, nil
 }
