@@ -124,5 +124,31 @@ func (this *PlayerInfo) ReInit(conn net.Conn) {
 
 //玩家出牌
 func (this *PlayerInfo) PutCards(cards []int) (int, error) {
-	return 0, nil
+
+	score := 0
+	for _, n := range cards {
+		score += GetCardScore(n)
+		bfind := false
+		for i, _ := range this.ArrCards {
+			if this.ArrCards[i] == n {
+				this.ArrCards[i] = -1
+				bfind = true
+				break
+			}
+		}
+		if !bfind {
+			return 0, fmt.Errorf(`[PLAYER] not find card`, n)
+		}
+	}
+
+	tmp := []int{}
+	for _, v := range this.ArrCards {
+		if v != -1 {
+			tmp = append(tmp, v)
+		}
+	}
+	this.ArrCards = tmp
+	log.Println(this.Conn.RemoteAddr().String(), "出牌后", this.ArrCards)
+
+	return score, nil
 }

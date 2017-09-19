@@ -141,6 +141,10 @@ func (this *DeskMnager) gameOver(run bool, arrRst []int) {
 	if run {
 		return
 	}
+
+	//保存成绩
+	this.SaveResult(arrRst)
+
 	//广播信息
 	buf := bytes.NewBufferString("")
 	for i := 0; i < 4; i++ {
@@ -153,6 +157,28 @@ func (this *DeskMnager) gameOver(run bool, arrRst []int) {
 		}
 	}
 	this.ToBroadInfo()
+}
+
+func (this *DeskMnager) SaveResult(rst []int) {
+	for i, v := range rst {
+		//计算盘和分数
+		p := this.arrPlayers[i]
+		p.Score += v * this.baseScore
+		if v > 0 {
+			p.Win += v
+			if err := GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_win`, p.Uid)), p.Win); err != nil {
+				log.Println(`[DESK] save player win error:`, p.Uid, p.Win)
+			}
+		} else {
+			p.Lose -= v
+			if err := GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_lose`, p.Uid)), p.Lose); err != nil {
+				log.Println(`[DESK] save player lose error:`, p.Uid, p.Lose)
+			}
+		}
+		if err := GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_score`, p.Uid)), p.Score); err != nil {
+			log.Println(`[DESK] save player score error:`, p.Uid, p.Score)
+		}
+	}
 }
 
 func (this *DeskMnager) PutMessage(text string, site int) {
@@ -252,6 +278,14 @@ func (this *DeskMnager) ProcessMsg(m *DeskMsg) {
 		p.SendMessage(fmt.Sprintf(fmt_game_put, m.Site, deskmsg.Cards, len(this.arrPlayers[m.Site].ArrCards), this.nDeskScore, next, must))
 		p.SendMessage(fmt.Sprintf(fmt_score, this.nP0Score, this.nP1Score))
 	}
+	// 计算是否结束
+	run := []int{-1, -1, -1, -1}
+	for i := 0; i < 4; i++ {
+		run[i] = this.arrPlayers[i].RunNum
+	}
+	if over, arrRst := IsOver(this.nP0Score, this.nP1Score, run); over {
+		this.gameOver(false, arrRst)
+	}
 }
 
 func (this *DeskMnager) GetNextPut(site int) int {
@@ -307,9 +341,7 @@ func (this *DeskMnager) KickPlayer() {
 
 // 游戏开始
 func (this *DeskMnager) GmeStart() {
-	this.muxDesk.Lock()
-	defer this.muxDesk.Unlock()
-
+	// 初始化
 	this.nLastPutSit = -1
 	this.nLastCards = []int{}
 	this.bPlaying = true
@@ -317,8 +349,43 @@ func (this *DeskMnager) GmeStart() {
 	this.nP0Score = 0
 	this.nP1Score = 0
 	this.RunCounts = 0
-
 	for _, v := range this.arrPlayers {
 		v.RunNum = -1
+		v.Ready = 0
 	}
+
+	// 发牌
+	arrCards, arrCardsint := Create4Cards()
+	for i, p := range this.arrPlayers {
+		this.arrPlayers[i].ArrCards = arrCardsint[i]
+		p.SendMessage(fmt.Sprintf(fmt_start, arrCards[i]))
+	}
+	put := GRand.Intn(3)
+	this.nLastPutSit = put
+	for _, p := range this.arrPlayers {
+		p.SendMessage(fmt.Sprintf(fmt_game_put, -1, "", 54, 0, put, 1))
+	}
+}
+
+func (this *DeskMnager) OnReady() {
+	this.muxDesk.Lock()
+	defer this.muxDesk.Unlock()
+	if this.bPlaying {
+		return
+	}
+	// 是否全准备
+	var allReady = true
+	for i := 0; i < 4; i++ {
+		if this.arrPlayers[i] == nil || this.arrPlayers[i].Ready == 0 {
+			allReady = false
+			break
+		}
+	}
+	if !allReady {
+		this.ToBroadInfo()
+		return
+	}
+
+	//游戏开始
+	this.GmeStart()
 }

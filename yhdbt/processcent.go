@@ -64,11 +64,11 @@ const (
 	//{"site":"3","name":"%s","result":"%d"}
 	// 玩家出牌 前一家出牌，剩余，桌面分数，现在出牌，是否必须出
 	fmt_game_put = `{"opt":"game","per":"%d","cards":"%s","surplus":"%d","score":"%d","now":"%d","must":"%d"}`
-	fmt_score    = `{"opt":"score","p0":"%d","p1":"%d"}`
-	fmt_error    = `{"opt":"error"}`
+	// 广播桌子当前两队得分
+	fmt_score = `{"opt":"score","p0":"%d","p1":"%d"}`
+	//fmt_error = `{"opt":"error"}`
 	// 玩家进入桌子长时间不准备 <- 玩家收到后发送离开桌子的请求
-	fmt_timeout    = `{"opt":"timeout"}`
-	fmt_playerinfo = `{"opt":"","win0":"","lose0":"","run0":""}`
+	fmt_timeout = `{"opt":"timeout"}`
 )
 
 type QueryMessage struct {
@@ -162,8 +162,12 @@ func (this *ProcessCent) process_add_desk(text string, p *PlayerInfo) error {
 //玩家举手
 func (this *ProcessCent) process_ready(text string, p *PlayerInfo) error {
 	p.Ready = 1
-	GHall.BroadDeskInfo(p.DeskNum)
-	return nil
+	desk := GHall.GetDesk(p.DeskNum)
+	if desk != nil {
+		desk.OnReady()
+		return nil
+	}
+	return fmt.Errorf(`[PROCESS] desk error: no desk`, p.DeskNum)
 }
 
 //离开桌子
