@@ -66,12 +66,14 @@ func (this *PlayerInfo) Routine_Broad() {
 	for {
 		select {
 		case msg := <-this.chBroad:
+			this.muxPlayer.Lock()
 			log.Println(`[PLAYER] send message`, msg)
 			if err := SendCommond(this.Conn, []byte(msg.msg)); err != nil {
 				log.Println(`[PLAYER] send error`, err)
 				GProcess.ProcessCmd(cmd_error, "", this)
 			}
 			this.msgPool.Put(msg)
+			this.muxPlayer.Unlock()
 		}
 	}
 }
@@ -117,6 +119,9 @@ func (this *PlayerInfo) Routine_Recv() {
 func (this *PlayerInfo) ReInit(conn net.Conn) {
 	this.muxPlayer.Lock()
 	defer this.muxPlayer.Unlock()
+	if this.Conn {
+		this.Conn.Close()
+	}
 	this.Conn = conn
 	this.Session = fmt.Sprintf(`%x`, md5.Sum([]byte(time.Now().String()+this.Uid)))
 	this.LastOnline = time.Now().Unix()
@@ -151,4 +156,12 @@ func (this *PlayerInfo) PutCards(cards []int) (int, error) {
 	log.Println(this.Conn.RemoteAddr().String(), "出牌后", this.ArrCards)
 
 	return score, nil
+}
+
+func (this *PlayerInfo) Kicked() {
+	this.muxPlayer.Lock()
+	defer this.muxPlayer.Unlock()
+	SendCommond(this.Conn, []byte(fmt.Sprintf(fmt_kicked)))
+
+	this.Conn.Close()
 }

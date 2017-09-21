@@ -1,3 +1,8 @@
+/*=================================
+User name: lazypos
+Time: 2017-09-21
+Explain:
+=================================*/
 package yhdbt
 
 import (

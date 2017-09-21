@@ -66,9 +66,12 @@ const (
 	fmt_game_put = `{"opt":"game","per":"%d","cards":"%s","surplus":"%d","score":"%d","now":"%d","must":"%d"}`
 	// 广播桌子当前两队得分
 	fmt_score = `{"opt":"score","p0":"%d","p1":"%d"}`
-	//fmt_error = `{"opt":"error"}`
+	// 数据异常
+	fmt_error = `{"opt":"error"}`
 	// 玩家进入桌子长时间不准备 <- 玩家收到后发送离开桌子的请求
 	fmt_timeout = `{"opt":"timeout"}`
+	// 被踢下线
+	fmt_kicked = `{"opt":"kicked"}`
 )
 
 type QueryMessage struct {
@@ -111,8 +114,16 @@ func (this *ProcessCent) ProcessCmd(cmd int, text string, p *PlayerInfo) error {
 		return this.process_heart(text, p)
 	case cmd_put_cards:
 		return this.process_put_cards(text, p)
+	default:
+		return this.prcess_error(p)
 	}
 	return fmt.Errorf(`[PROCESS] unknow cmd`)
+}
+
+// 数据异常
+func (this *ProcessCent) prcess_error(p *PlayerInfo) error {
+	this.process_leave("", p)
+	p.SendMessage(fmt_error)
 }
 
 //查询版本

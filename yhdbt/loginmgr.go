@@ -46,15 +46,31 @@ func (this *LoginManager) SaveLoginKey(key, uid string) {
 //定期清除超时的登陆凭证
 func (this *LoginManager) Routine_CheckTimeOut() {
 	ticker := time.NewTicker(time.Second * 5)
+	tickerLeave := time.NewTicker(time.Second * 10)
 	for {
 		select {
 		case <-ticker.C:
 			this.CheckLoginKeyTimeOut()
+		case <-tickerLeave.C:
+			//this.CheckLineOff()
 		}
 	}
 }
 
-//清楚凭证函数
+//处理掉线
+func (this *LoginManager) CheckLineOff() {
+	now := time.Now().Unix()
+
+	this.muxPlayers.Lock()
+	defer this.muxPlayers.Unlock()
+	for _, v := range this.MapPlayers {
+		if now-v.LastOnline > 120 {
+			GProcess.ProcessCmd(cmd_error, "", v)
+		}
+	}
+}
+
+//清除凭证函数
 func (this *LoginManager) CheckLoginKeyTimeOut() {
 	now := time.Now().Unix()
 	this.muxLoginKey.Lock()
@@ -75,7 +91,7 @@ func (this *LoginManager) GetPlayerInfo(conn net.Conn, uid string) *PlayerInfo {
 	// 重复登陆,踢下线
 	pInfo, ok := this.MapPlayers[uid]
 	if ok && len(pInfo.Session) > 0 {
-		GKicked.AddTick(pInfo)
+		pInfo.Kicked()
 	}
 	// 如果是新登陆的
 	if pInfo == nil {
