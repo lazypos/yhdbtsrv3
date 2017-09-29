@@ -41,9 +41,14 @@ func (this *TCPServer) Routine_Listen(serverfd net.Listener) {
 //处理连接，将合法玩家输送给游戏大厅
 func (this *TCPServer) processConn(conn net.Conn) {
 
-	content, err := RecvCommond(conn)
+	cmd, content, err := RecvCommond(conn)
 	if err != nil {
 		log.Println(`[SERVER] recv error:`, err)
+		conn.Close()
+		return
+	}
+	if cmd != cmd_add_hall {
+		log.Println(`[SERVER] recv CMD unknow.`)
 		conn.Close()
 		return
 	}
@@ -60,6 +65,7 @@ func (this *TCPServer) processConn(conn net.Conn) {
 		log.Println(`[SERVER] login error: can not find the player info from uid.`)
 		return
 	}
+	pInfo.SendMessage(fmt.Sprintf(fmt_plyer_info, pInfo.NickName, pInfo.Score, pInfo.Win, pInfo.Lose, pInfo.Run))
 	// 加入游戏大厅
 	GHall.AddPlayer(pInfo)
 }

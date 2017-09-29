@@ -80,33 +80,15 @@ func (this *PlayerInfo) Routine_Broad() {
 
 //接受玩家信息线程
 func (this *PlayerInfo) Routine_Recv() {
-	type CommInfo struct {
-		Cmd     int    `json:"cmd"`
-		Session string `json:"cookie"`
-		Text    string `json:"text"`
-	}
-	CInfo := &CommInfo{}
 	for {
-		content, err := RecvCommond(this.Conn)
+		cmd, content, err := RecvCommond(this.Conn)
 		if err != nil {
 			log.Println(`[PLAYER] recv error:`, err)
 			break
 		}
-
-		if err = json.Unmarshal(content, CInfo); err != nil {
-			log.Println(`[PLAYER] recv json error:`, err)
-			break
-		}
-
-		this.muxPlayer.Lock()
-		tmpSession := this.Session
-		this.muxPlayer.Unlock()
-		if CInfo.Session != tmpSession {
-			break
-		}
 		// 处理请求
-		log.Panicln(`[PLYAER] recv cmd:`, CInfo.Cmd, CInfo.Text)
-		if err = GProcess.ProcessCmd(CInfo.Cmd, CInfo.Text, this); err != nil {
+		log.Panicln(`[PLYAER] recv cmd:`, cmd, content)
+		if err = GProcess.ProcessCmd(cmd, content, this); err != nil {
 			log.Println(`[PLAYER] process cmd error,`, err)
 			break
 		}

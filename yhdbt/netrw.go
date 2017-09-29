@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	header_len = 8
+	header_len = 12
 	comm_flag  = 0x12348765
 )
 
@@ -43,13 +43,14 @@ func recvMessage(conn net.Conn, totallen int) ([]byte, error) {
 }
 
 //接受一个命令
-func RecvCommond(conn net.Conn) ([]byte, error) {
+func RecvCommond(conn net.Conn) (int, []byte, error) {
 	head, err := recvMessage(conn, header_len)
 	if err != nil {
 		return []byte{}, fmt.Errorf(`[NET] recv header error:`, err)
 	}
 	flags := int(*(*int32)(unsafe.Pointer(&head[0])))
-	datalen := int(*(*int32)(unsafe.Pointer(&head[4])))
+	cmd := int(*(*int32)(unsafe.Pointer(&head[4])))
+	datalen := int(*(*int32)(unsafe.Pointer(&head[8])))
 	if flags != comm_flag || datalen < 0 || datalen > 1000 {
 		return []byte{}, fmt.Errorf(`[NET] recv header error: falg or length error.`)
 	}

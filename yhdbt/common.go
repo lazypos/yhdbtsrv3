@@ -15,7 +15,7 @@ const (
 
 //检查用户名合法性
 func CheckUser(user string) error {
-	if !regexp.MustCompile(`^[0-9a-zA-Z]{6,16}$`).MatchString(user) {
+	if !regexp.MustCompile(`^[0-9]{11}$`).MatchString(user) {
 		return fmt.Errorf(`user format error.`)
 	}
 	return nil

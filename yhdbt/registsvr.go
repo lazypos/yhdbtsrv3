@@ -22,7 +22,7 @@ const (
 )
 
 const (
-	rpy_login_fmt = `{"error":"%d", "cookie":"%s"}`
+	rpy_login_fmt = `{"error":"%d", "loginkey":"%s"}`
 )
 
 //用户注册服务器

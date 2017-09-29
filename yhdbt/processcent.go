@@ -18,6 +18,8 @@ const (
 	cmd_desk_leave    = 0x1005 //离开桌子
 	cmd_heart         = 0x1006 //心跳
 	cmd_put_cards     = 0x1007 //玩家出牌
+	cmd_query_online  = 0x1008 //查询在线人数
+	cmd_add_hall      = 0x1009 //加入大厅
 )
 
 const (
@@ -28,7 +30,7 @@ const (
 // 回复信息
 const (
 	// 查询版本号
-	fmt_query = `{"opt":"query","version":"46"}`
+	fmt_query = `{"opt":"version","version":"46"}`
 	// 查询排行榜 昵称和分数
 	fmt_query_rank     = `{"opt":"rank","info":[%s]}`
 	fmt_query_rank_sub = `{"id":"%d","nick":"%s","score":"%d"},`
@@ -72,15 +74,17 @@ const (
 	fmt_timeout = `{"opt":"timeout"}`
 	// 被踢下线
 	fmt_kicked = `{"opt":"kicked"}`
+	// 玩家登陆的时候返回玩家信息
+	fmt_plyer_info = `{"opt":"login","nick":"%s","socre":"%d","win":"%d","lose":"%d","run":"%d"}`
 )
 
 type QueryMessage struct {
-	Opt     string `json:"opt"`   //操作
-	DeskNum int    `json:"desk"`  //桌号
-	Site    int    `json:"site"`  //位号
-	Type    string `json:"type"`  //类型
-	Cards   string `json:"cards"` //出牌
-	Key     string `json:"key"`   //用户ID
+	Opt     string `json:"opt"`     //操作
+	DeskNum int    `json:"desk"`    //桌号
+	Site    int    `json:"site"`    //位号
+	Type    string `json:"type"`    //类型
+	Cards   string `json:"cards"`   //出牌
+	Message string `json:"message"` //其他
 }
 
 // 命令处理
