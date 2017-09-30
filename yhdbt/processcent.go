@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 )
@@ -30,7 +31,9 @@ const (
 // 回复信息
 const (
 	// 查询版本号
-	fmt_query = `{"opt":"version","version":"46"}`
+	fmt_query_version = `{"opt":"version","version":"61"}`
+	// 查询在线
+	fmt_query_online = `{"opt":"online","count":"%d"}`
 	// 查询排行榜 昵称和分数
 	fmt_query_rank     = `{"opt":"rank","info":[%s]}`
 	fmt_query_rank_sub = `{"id":"%d","nick":"%s","score":"%d"},`
@@ -38,12 +41,7 @@ const (
 	//{"id":"1","nick":"%s","score":"%d"},
 	//{"id":"2","nick":"%s","score":"%d"},
 	//{"id":"3","nick":"%s","score":"%d"},
-	//{"id":"4","nick":"%s","score":"%d"},
-	//{"id":"5","nick":"%s","score":"%d"},
-	//{"id":"6","nick":"%s","score":"%d"},
-	//{"id":"7","nick":"%s","score":"%d"},
-	//{"id":"8","nick":"%s","score":"%d"},
-	//{"id":"9","nick":"%s","score":"%d"}
+	//{"id":"4","nick":"%s","score":"%d"}
 	// 加入桌子，成功桌号/座位， 错误代码
 	fmt_add_desk = `{"opt":"add","desk":"%d","site":"%d"}`
 	// 桌上玩家变更
@@ -75,7 +73,7 @@ const (
 	// 被踢下线
 	fmt_kicked = `{"opt":"kicked"}`
 	// 玩家登陆的时候返回玩家信息
-	fmt_plyer_info = `{"opt":"login","nick":"%s","socre":"%d","win":"%d","lose":"%d","run":"%d"}`
+	fmt_plyer_info = `{"opt":"login","nick":"%s","score":"%d","win":"%d","lose":"%d","run":"%d"}`
 )
 
 type QueryMessage struct {
@@ -102,6 +100,7 @@ func (this *ProcessCent) Init() {
 func (this *ProcessCent) ProcessCmd(cmd int, text string, p *PlayerInfo) error {
 	//更新在线时间
 	p.LastOnline = time.Now().Unix()
+	log.Println(`[PROCESS] recv cmd:`, cmd, text)
 
 	switch cmd {
 	case cmd_query_version:
@@ -118,21 +117,32 @@ func (this *ProcessCent) ProcessCmd(cmd int, text string, p *PlayerInfo) error {
 		return this.process_heart(text, p)
 	case cmd_put_cards:
 		return this.process_put_cards(text, p)
+	case cmd_query_online:
+		return this.process_online(p)
 	default:
 		return this.prcess_error(p)
 	}
+	log.Println(`[PROCESS] unknow cmd`, cmd)
 	return fmt.Errorf(`[PROCESS] unknow cmd`)
 }
 
 // 数据异常
 func (this *ProcessCent) prcess_error(p *PlayerInfo) error {
 	this.process_leave("", p)
-	p.SendMessage(fmt_error)
+	//p.SendMessage(fmt_error)
+	return nil
+}
+
+//在线人数
+func (this *ProcessCent) process_online(p *PlayerInfo) error {
+	n := GHall.QueryPlayerCounts()
+	p.SendMessage(fmt.Sprintf(fmt_query_online, n))
+	return nil
 }
 
 //查询版本
 func (this *ProcessCent) process_version(text string, p *PlayerInfo) error {
-	p.SendMessage(fmt_query)
+	p.SendMessage(fmt_query_version)
 	return nil
 }
 
@@ -143,7 +153,9 @@ func (this *ProcessCent) process_rank(text string, p *PlayerInfo) error {
 	for k, v := range m {
 		buf.WriteString(fmt.Sprintf(fmt_query_rank_sub, k, v.nick, v.socre))
 	}
-	buf.Truncate(buf.Len() - 1)
+	if buf.Len() > 0 {
+		buf.Truncate(buf.Len() - 1)
+	}
 	p.SendMessage(fmt.Sprintf(fmt_query_rank, buf.String()))
 	return nil
 }
@@ -153,7 +165,7 @@ func (this *ProcessCent) process_add_desk(text string, p *PlayerInfo) error {
 	qm := this.msgPool.Get().(*QueryMessage)
 	defer this.msgPool.Put(qm)
 	if err := json.Unmarshal([]byte(text), qm); err != nil {
-		return fmt.Errorf(`[PROCESS] content error:`, err)
+		return fmt.Errorf(`[PROCESS] content error: %v`, err)
 	}
 	//创建桌子
 	var desknum = qm.DeskNum

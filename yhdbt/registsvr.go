@@ -35,6 +35,7 @@ var GRegistServer = &RegistServer{}
 func (this *RegistServer) Start() error {
 	http.HandleFunc("/regist", this.CRegist)
 	http.HandleFunc("/login", this.CLogin)
+	http.HandleFunc("/version", this.CVersion)
 	http.HandleFunc("/pay", this.CPayCenter)
 	return http.ListenAndServe(":51888", nil)
 }
@@ -125,6 +126,7 @@ func (this *RegistServer) CLogin(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 	GLogin.SaveLoginKey(loginKey, uid)
+	log.Println(`[REGIST] login ok`, loginKey, uid)
 	fmt.Fprintf(rw, rpy_login_fmt, err_code_ok, loginKey)
 }
 
@@ -141,4 +143,9 @@ func (this *RegistServer) Login(username, pass string) (int, string, string) {
 
 	loginkey := fmt.Sprintf(`%x`, md5.Sum([]byte(username+pass+time.Now().String())))
 	return err_code_ok, string(uid[:]), loginkey
+}
+
+func (this *RegistServer) CVersion(rw http.ResponseWriter, req *http.Request) {
+	log.Println(`[REGIST] 查询版本`, req.RemoteAddr)
+	fmt.Fprintf(rw, fmt_query_version)
 }

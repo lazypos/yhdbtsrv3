@@ -46,30 +46,30 @@ func recvMessage(conn net.Conn, totallen int) ([]byte, error) {
 func RecvCommond(conn net.Conn) (int, []byte, error) {
 	head, err := recvMessage(conn, header_len)
 	if err != nil {
-		return []byte{}, fmt.Errorf(`[NET] recv header error:`, err)
+		return 0, []byte{}, fmt.Errorf(`[NET] recv header error: %v`, err)
 	}
 	flags := int(*(*int32)(unsafe.Pointer(&head[0])))
 	cmd := int(*(*int32)(unsafe.Pointer(&head[4])))
 	datalen := int(*(*int32)(unsafe.Pointer(&head[8])))
 	if flags != comm_flag || datalen < 0 || datalen > 1000 {
-		return []byte{}, fmt.Errorf(`[NET] recv header error: falg or length error.`)
+		return 0, []byte{}, fmt.Errorf(`[NET] recv header error: falg or length error.`)
 	}
 	content, err := recvMessage(conn, datalen)
 	if err != nil {
-		return []byte{}, fmt.Errorf(`[NET] recv content error:`, err)
+		return 0, []byte{}, fmt.Errorf(`[NET] recv content error: %v`, err)
 	}
-	return content, nil
+	return cmd, content, nil
 }
 
 //发送一个命令
 func SendCommond(conn net.Conn, content []byte) error {
 	datalen := len(content)
-	sendBuf := make([]byte, header_len+datalen)
+	sendBuf := make([]byte, 8+datalen)
 
 	*(*uint32)(unsafe.Pointer(&sendBuf[0])) = *(*uint32)(unsafe.Pointer(&comm_flag))
 	*(*int32)(unsafe.Pointer(&sendBuf[4])) = *(*int32)(unsafe.Pointer(&datalen))
 
-	copy(sendBuf[header_len:], content)
+	copy(sendBuf[8:], content[:])
 	if err := sendMesssage(conn, sendBuf); err != nil {
 		return fmt.Errorf(`[NET] send content error %v`, err)
 	}

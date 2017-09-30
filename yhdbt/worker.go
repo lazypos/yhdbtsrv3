@@ -36,6 +36,7 @@ func (this *Worker) Routine_worker() {
 
 // 更新排名
 func (this *Worker) UpdateRank() {
+	// 遍历所有人员
 
 }
 

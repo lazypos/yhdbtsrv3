@@ -154,3 +154,9 @@ func (this *HallManger) GetDesk(Dnum int) *DeskMnager {
 	defer this.muxHall.Unlock()
 	return this.MapDesks[Dnum]
 }
+
+func (this *HallManger) QueryPlayerCounts() int {
+	this.muxHall.Lock()
+	defer this.muxHall.Unlock()
+	return len(this.MapPlayers)
+}

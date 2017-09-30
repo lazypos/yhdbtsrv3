@@ -2,7 +2,6 @@ package yhdbt
 
 import (
 	"crypto/md5"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -42,7 +41,11 @@ type PlayerInfo struct {
 	Conn       net.Conn //连接句柄
 }
 
-func (this *PlayerInfo) Init() {
+func (this *PlayerInfo) Init(conn net.Conn) {
+	this.Conn = conn
+	this.Session = fmt.Sprintf(`%x`, md5.Sum([]byte(time.Now().String()+this.Uid)))
+	this.LastOnline = time.Now().Unix()
+
 	this.chBroad = make(chan *Msg, 10)
 	this.msgPool = &sync.Pool{New: func() interface{} { return new(Msg) }}
 	go this.Routine_Broad()
@@ -87,8 +90,8 @@ func (this *PlayerInfo) Routine_Recv() {
 			break
 		}
 		// 处理请求
-		log.Panicln(`[PLYAER] recv cmd:`, cmd, content)
-		if err = GProcess.ProcessCmd(cmd, content, this); err != nil {
+		log.Println(`[PLYAER] recv cmd:`, cmd, content)
+		if err = GProcess.ProcessCmd(cmd, string(content[:]), this); err != nil {
 			log.Println(`[PLAYER] process cmd error,`, err)
 			break
 		}
@@ -101,12 +104,13 @@ func (this *PlayerInfo) Routine_Recv() {
 func (this *PlayerInfo) ReInit(conn net.Conn) {
 	this.muxPlayer.Lock()
 	defer this.muxPlayer.Unlock()
-	if this.Conn {
+	if this.Conn != nil {
 		this.Conn.Close()
 	}
 	this.Conn = conn
 	this.Session = fmt.Sprintf(`%x`, md5.Sum([]byte(time.Now().String()+this.Uid)))
 	this.LastOnline = time.Now().Unix()
+	go this.Routine_Recv()
 }
 
 //玩家出牌

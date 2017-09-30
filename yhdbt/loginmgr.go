@@ -2,6 +2,7 @@ package yhdbt
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -95,8 +96,10 @@ func (this *LoginManager) GetPlayerInfo(conn net.Conn, uid string) *PlayerInfo {
 	}
 	// 如果是新登陆的
 	if pInfo == nil {
-		pInfo := this.playerPool.Get().(*PlayerInfo)
+		log.Println(`[login] new login.`)
+		pInfo = this.playerPool.Get().(*PlayerInfo)
 		this.MapPlayers[uid] = pInfo
+		pInfo.Init(conn)
 
 		pInfo.Uid = uid
 		pInfo.NickName = string(GDBOpt.GetValue([]byte(fmt.Sprintf(`%s_nick`, uid)))[:])
@@ -104,9 +107,9 @@ func (this *LoginManager) GetPlayerInfo(conn net.Conn, uid string) *PlayerInfo {
 		pInfo.Win = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_win`, uid)))
 		pInfo.Lose = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_lose`, uid)))
 		pInfo.Run = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_run`, uid)))
+	} else {
+		pInfo.ReInit(conn)
 	}
-	// 更新信息
-	pInfo.ReInit(conn)
 	return pInfo
 }
 

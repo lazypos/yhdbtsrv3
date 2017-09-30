@@ -16,8 +16,9 @@ func main() {
 
 	yhdbt.GProcess.Init()
 	yhdbt.GLogin.Start()
+	yhdbt.GHall.Start()
 	yhdbt.GKicked.Start()
 	yhdbt.GWorker.Start()
-	yhdbt.GTCPServer.Start("5183")
+	yhdbt.GTCPServer.Start("9999")
 	yhdbt.GRegistServer.Start()
 }
