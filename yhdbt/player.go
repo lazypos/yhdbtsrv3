@@ -61,6 +61,7 @@ func (this *PlayerInfo) SendMessageCB(content string, cb func(string)) {
 }
 
 func (this *PlayerInfo) SendMessage(content string) {
+	log.Println(`[player] call SendMessage`, content)
 	this.SendMessageCB(content, nil)
 }
 
@@ -71,18 +72,23 @@ func (this *PlayerInfo) Routine_Broad() {
 		case msg := <-this.chBroad:
 			this.muxPlayer.Lock()
 			log.Println(`[PLAYER] send message`, msg)
-			if err := SendCommond(this.Conn, []byte(msg.msg)); err != nil {
+			err := SendCommond(this.Conn, []byte(msg.msg))
+			if err != nil {
 				log.Println(`[PLAYER] send error`, err)
 				GProcess.ProcessCmd(cmd_error, "", this)
 			}
 			this.msgPool.Put(msg)
 			this.muxPlayer.Unlock()
+			if err != nil {
+				return
+			}
 		}
 	}
 }
 
 //接受玩家信息线程
 func (this *PlayerInfo) Routine_Recv() {
+	defer this.Conn.Close()
 	for {
 		cmd, content, err := RecvCommond(this.Conn)
 		if err != nil {
@@ -111,6 +117,7 @@ func (this *PlayerInfo) ReInit(conn net.Conn) {
 	this.Session = fmt.Sprintf(`%x`, md5.Sum([]byte(time.Now().String()+this.Uid)))
 	this.LastOnline = time.Now().Unix()
 	go this.Routine_Recv()
+	go this.Routine_Broad()
 }
 
 //玩家出牌

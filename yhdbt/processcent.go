@@ -175,7 +175,7 @@ func (this *ProcessCent) process_add_desk(text string, p *PlayerInfo) error {
 
 	desk, sid := GHall.AddDesk(desknum, p)
 	if desk == nil {
-		p.SendMessage(fmt.Sprintf(fmt_add_desk, desk.DeskNum, sid))
+		p.SendMessage(fmt.Sprintf(fmt_add_desk, -1, sid))
 		return nil
 	}
 	p.SendMessage(fmt.Sprintf(fmt_add_desk, err_desk_full, sid))

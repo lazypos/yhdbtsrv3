@@ -335,6 +335,7 @@ func (this *DeskMnager) KickPlayer() {
 		p := this.arrPlayers[k]
 		if p != nil && v != 0 && nowtime-v > 60 && p.Ready == 0 {
 			p.SendMessage(fmt.Sprintf(fmt_timeout))
+			this.arrPlayers[k] = nil
 		}
 	}
 }

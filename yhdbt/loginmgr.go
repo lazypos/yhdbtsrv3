@@ -92,6 +92,7 @@ func (this *LoginManager) GetPlayerInfo(conn net.Conn, uid string) *PlayerInfo {
 	// 重复登陆,踢下线
 	pInfo, ok := this.MapPlayers[uid]
 	if ok && len(pInfo.Session) > 0 {
+		log.Println(`[login] kicked.`)
 		pInfo.Kicked()
 	}
 	// 如果是新登陆的
@@ -108,6 +109,7 @@ func (this *LoginManager) GetPlayerInfo(conn net.Conn, uid string) *PlayerInfo {
 		pInfo.Lose = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_lose`, uid)))
 		pInfo.Run = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_run`, uid)))
 	} else {
+		log.Println(`[login] ReInit.`)
 		pInfo.ReInit(conn)
 	}
 	return pInfo
