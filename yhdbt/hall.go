@@ -79,7 +79,8 @@ func (this *HallManger) checkBreak() {
 				desk := this.MapDesks[p.DeskNum]
 				desk.LeavePlayer(p)
 			} else {
-				this.LeaveHall(p)
+				delete(this.MapPlayers, p.Uid)
+				log.Println(`[HALL] player leave:`, p.Conn.RemoteAddr().String())
 			}
 		}
 	}
@@ -120,10 +121,14 @@ func (this *HallManger) AddDesk(deskNum int, p *PlayerInfo) (*DeskMnager, int) {
 			desk := &DeskMnager{}
 			desk.InitDesk(i)
 			s := desk.AddPlayer(p)
-			this.MapDesks[deskNum] = desk
+			this.MapDesks[i] = desk
 			return desk, s
 		}
 	}
+	return nil, -1
+}
+
+func (this *HallManger) CreateDesk() (*DeskMnager, int) {
 	return nil, -1
 }
 

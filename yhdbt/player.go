@@ -96,7 +96,7 @@ func (this *PlayerInfo) Routine_Recv() {
 			break
 		}
 		// 处理请求
-		log.Println(`[PLYAER] recv cmd:`, cmd, content)
+		log.Println(`[PLYAER] recv cmd:`, cmd, string(content[:]))
 		if err = GProcess.ProcessCmd(cmd, string(content[:]), this); err != nil {
 			log.Println(`[PLAYER] process cmd error,`, err)
 			break

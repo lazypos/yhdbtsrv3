@@ -137,7 +137,7 @@ func (this *RegistServer) Login(username, pass string) (int, string, string) {
 
 	uid := GDBOpt.GetValue([]byte(username))
 	if len(uid) == 0 {
-		log.Println(`[REGIST] user not exist.`, username)
+		log.Println(`[REGIST] user not exist.`, username, pass)
 		return err_code_noexist, "", ""
 	}
 

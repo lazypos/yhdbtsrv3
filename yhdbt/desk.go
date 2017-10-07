@@ -91,7 +91,7 @@ func (this *DeskMnager) LeavePlayer(p *PlayerInfo) bool {
 	if !this.bPlaying { // 如果游戏还没开始
 		for i, v := range this.arrPlayers {
 			if v != nil {
-				if p.Session == v.Session {
+				if p.Uid == v.Uid {
 					p.DeskNum = -1
 					this.arrPlayers[i] = nil
 					this.MapAddTimes[i] = 0
@@ -117,10 +117,10 @@ func (this *DeskMnager) playerRun(p *PlayerInfo) {
 	p.DeskNum = -1
 	for _, v := range this.arrPlayers {
 		if v != nil {
-			v.SendMessage(fmt.Sprintf(fmt_run, p.SiteNum, p.NickName, this.baseScore))
+			v.SendMessage(fmt.Sprintf(fmt_run, p.SiteNum, p.NickName, this.baseScore*10))
 		}
 	}
-	p.Score -= this.baseScore
+	p.Score -= this.baseScore * 10
 	if err := GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_score`, p.Uid)), p.Score); err != nil {
 		log.Println(`[DESK] save player score error:`, p.Uid, p.Score)
 	}
@@ -133,7 +133,7 @@ func (this *DeskMnager) gameOver(run bool, arrRst []int) {
 	this.bPlaying = false
 	this.nLastPutSit = -1
 	for i, p := range this.arrPlayers {
-		this.MapAddTimes[i] = 0
+		this.MapAddTimes[i] = time.Now().Unix()
 		if p != nil {
 			p.Ready = 0
 		}
@@ -146,14 +146,9 @@ func (this *DeskMnager) gameOver(run bool, arrRst []int) {
 	this.SaveResult(arrRst)
 
 	//广播信息
-	buf := bytes.NewBufferString("")
-	for i := 0; i < 4; i++ {
-		buf.WriteString(fmt.Sprintf(fmt_game_over_sub, i, arrRst[i]))
-	}
-	buf.Truncate(buf.Len() - 1)
-	for _, p := range this.arrPlayers {
+	for i, p := range this.arrPlayers {
 		if p != nil {
-			p.SendMessage(fmt.Sprintf(fmt_game_over, buf.String()))
+			p.SendMessage(fmt.Sprintf(fmt_game_over, arrRst[i]))
 		}
 	}
 	this.ToBroadInfo()
@@ -238,7 +233,7 @@ func (this *DeskMnager) ProcessMsg(m *DeskMsg) {
 				}
 			}
 			// 下一家还没出完的出牌
-			if this.arrPlayers[next].RunNum != -1 {
+			if this.arrPlayers[next].RunNum == -1 {
 				break
 			}
 		}
@@ -256,6 +251,7 @@ func (this *DeskMnager) ProcessMsg(m *DeskMsg) {
 			return
 		}
 
+		this.nLastPutSit = next
 		//出完牌
 		if len(this.arrPlayers[m.Site].ArrCards) == 0 {
 			this.arrPlayers[m.Site].RunNum = this.RunCounts
@@ -265,7 +261,8 @@ func (this *DeskMnager) ProcessMsg(m *DeskMsg) {
 		this.nDeskScore += score
 		for i := 0; i < 4; i++ {
 			next = this.GetNextPut(next)
-			if this.arrPlayers[next].RunNum != -1 {
+			//log.Println(next, this.arrPlayers[next].RunNum )
+			if this.arrPlayers[next].RunNum == -1 {
 				break
 			}
 		}
@@ -273,7 +270,6 @@ func (this *DeskMnager) ProcessMsg(m *DeskMsg) {
 	}
 
 	this.nNowPutSit = next
-	this.nLastPutSit = next
 	for _, p := range this.arrPlayers {
 		p.SendMessage(fmt.Sprintf(fmt_game_put, m.Site, deskmsg.Cards, len(this.arrPlayers[m.Site].ArrCards), this.nDeskScore, next, must))
 		p.SendMessage(fmt.Sprintf(fmt_score, this.nP0Score, this.nP1Score))
@@ -315,11 +311,17 @@ func (this *DeskMnager) broadDeskInfo() {
 	buf := bytes.NewBufferString("")
 	//`{"site":"%d","name":"%s","ready":"%d","socre":"%d","win":"%d","lose":"%d","run":"%d"},`
 	for i, p := range this.arrPlayers {
-		buf.WriteString(fmt.Sprintf(fmt_change_sub, i, p.NickName, p.Ready, p.Win, p.Lose, p.Run))
+		if p != nil {
+			buf.WriteString(fmt.Sprintf(fmt_change_sub, i, p.NickName, p.Ready, p.Score, p.Win, p.Lose, p.Run))
+		} else {
+			buf.WriteString(fmt.Sprintf(fmt_change_sub, i, "", 0, 0, 0, 0, 0))
+		}
 	}
 	buf.Truncate(buf.Len() - 1)
 	for _, p := range this.arrPlayers {
-		p.SendMessage(fmt.Sprintf(fmt_change, buf.String()))
+		if p != nil {
+			p.SendMessage(fmt.Sprintf(fmt_change, buf.String()))
+		}
 	}
 }
 
@@ -333,9 +335,11 @@ func (this *DeskMnager) KickPlayer() {
 	for k, v := range this.MapAddTimes {
 		// 超过一分钟不准备
 		p := this.arrPlayers[k]
-		if p != nil && v != 0 && nowtime-v > 60 && p.Ready == 0 {
+		if p != nil && v != 0 && nowtime-v > 60 && p.Ready == 0 && !this.bPlaying {
 			p.SendMessage(fmt.Sprintf(fmt_timeout))
 			this.arrPlayers[k] = nil
+			this.MapAddTimes[k] = 0
+			//GProcess.ProcessCmd(cmd_desk_leave, "", p)
 		}
 	}
 }
@@ -350,15 +354,16 @@ func (this *DeskMnager) GmeStart() {
 	this.nP0Score = 0
 	this.nP1Score = 0
 	this.RunCounts = 0
-	for _, v := range this.arrPlayers {
-		v.RunNum = -1
-		v.Ready = 0
+	for i, _ := range this.arrPlayers {
+		this.arrPlayers[i].RunNum = -1
+		this.arrPlayers[i].Ready = 0
 	}
 
 	// 发牌
 	arrCards, arrCardsint := Create4Cards()
 	for i, p := range this.arrPlayers {
 		this.arrPlayers[i].ArrCards = arrCardsint[i]
+		log.Println(this.arrPlayers[i].ArrCards)
 		p.SendMessage(fmt.Sprintf(fmt_start, arrCards[i]))
 	}
 	put := GRand.Intn(3)

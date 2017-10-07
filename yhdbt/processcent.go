@@ -21,6 +21,7 @@ const (
 	cmd_put_cards     = 0x1007 //玩家出牌
 	cmd_query_online  = 0x1008 //查询在线人数
 	cmd_add_hall      = 0x1009 //加入大厅
+	cmd_query_self    = 0x1010 //查询自己信息
 )
 
 const (
@@ -46,22 +47,22 @@ const (
 	fmt_add_desk = `{"opt":"add","desk":"%d","site":"%d"}`
 	// 桌上玩家变更
 	fmt_change     = `{"opt":"change","info":[%s]}`
-	fmt_change_sub = `{"site":"%d","name":"%s","ready":"%d","socre":"%d","win":"%d","lose":"%d","run":"%d"},`
-	//{"site":"0","name":"%s","ready":"%d","socre":"%d","win":"%d","lose":"%d","run":"%d"},
-	//{"site":"1","name":"%s","ready":"%d","socre":"%d","win":"%d","lose":"%d","run":"%d"},
-	//{"site":"2","name":"%s","ready":"%d","socre":"%d","win":"%d","lose":"%d","run":"%d"},
-	//{"site":"3","name":"%s","ready":"%d","socre":"%d","win":"%d","lose":"%d","run":"%d"}
+	fmt_change_sub = `{"site":"%d","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d"},`
+	//{"site":"0","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d"},
+	//{"site":"1","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d"},
+	//{"site":"2","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d"},
+	//{"site":"3","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d"}
 	// 游戏开始
 	fmt_start = `{"opt":"start","cards":"%s"}`
 	// 玩家逃跑 扣多少分
 	fmt_run = `{"opt":"run","site":"%d","name":"%s","score":"%d"}`
 	// 游戏结束
-	fmt_game_over     = `{"opt":"over","info":[%s]}`
-	fmt_game_over_sub = `{"site":"%d","result":"%d"},`
-	//{"site":"0","name":"%s","result":"%d"},
-	//{"site":"1","name":"%s","result":"%d"},
-	//{"site":"2","name":"%s","result":"%d"},
-	//{"site":"3","name":"%s","result":"%d"}
+	fmt_game_over = `{"opt":"over","result":"%d"}`
+	// fmt_game_over_sub = `{"site":"%d","result":"%d"},`
+	// //{"site":"0","name":"%s","result":"%d"},
+	// //{"site":"1","name":"%s","result":"%d"},
+	// //{"site":"2","name":"%s","result":"%d"},
+	// //{"site":"3","name":"%s","result":"%d"}
 	// 玩家出牌 前一家出牌，剩余，桌面分数，现在出牌，是否必须出
 	fmt_game_put = `{"opt":"game","per":"%d","cards":"%s","surplus":"%d","score":"%d","now":"%d","must":"%d"}`
 	// 广播桌子当前两队得分
@@ -100,7 +101,9 @@ func (this *ProcessCent) Init() {
 func (this *ProcessCent) ProcessCmd(cmd int, text string, p *PlayerInfo) error {
 	//更新在线时间
 	p.LastOnline = time.Now().Unix()
-	log.Println(`[PROCESS] recv cmd:`, cmd, text)
+	if cmd != cmd_query_online &&  cmd != cmd_heart{
+		log.Println(`[PROCESS] recv cmd:`, cmd, string(text[:]))
+	}
 
 	switch cmd {
 	case cmd_query_version:
@@ -119,11 +122,18 @@ func (this *ProcessCent) ProcessCmd(cmd int, text string, p *PlayerInfo) error {
 		return this.process_put_cards(text, p)
 	case cmd_query_online:
 		return this.process_online(p)
+	case cmd_query_self:
+		return this.prcess_query_self(p)
 	default:
 		return this.prcess_error(p)
 	}
 	log.Println(`[PROCESS] unknow cmd`, cmd)
 	return fmt.Errorf(`[PROCESS] unknow cmd`)
+}
+
+func (this *ProcessCent) prcess_query_self(p *PlayerInfo) error {
+	p.SendMessage(fmt.Sprintf(fmt_plyer_info, p.NickName, p.Score, p.Win, p.Lose, p.Run))
+	return nil
 }
 
 // 数据异常
@@ -178,10 +188,12 @@ func (this *ProcessCent) process_add_desk(text string, p *PlayerInfo) error {
 		p.SendMessage(fmt.Sprintf(fmt_add_desk, -1, sid))
 		return nil
 	}
-	p.SendMessage(fmt.Sprintf(fmt_add_desk, err_desk_full, sid))
+	log.Println(`加入桌子成功`, desk.DeskNum, sid)
+	p.SendMessage(fmt.Sprintf(fmt_add_desk, desk.DeskNum, sid))
 	//广播消息
 	p.DeskNum = desk.DeskNum
 	p.SiteNum = sid
+	p.Ready = 0
 	GHall.BroadDeskInfo(desk.DeskNum)
 	return nil
 }
@@ -194,7 +206,7 @@ func (this *ProcessCent) process_ready(text string, p *PlayerInfo) error {
 		desk.OnReady()
 		return nil
 	}
-	return fmt.Errorf(`[PROCESS] desk error: no desk`, p.DeskNum)
+	return fmt.Errorf(`[PROCESS] desk error: no desk %v`, p.DeskNum)
 }
 
 //离开桌子
