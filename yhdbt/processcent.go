@@ -47,7 +47,7 @@ const (
 	fmt_add_desk = `{"opt":"add","desk":"%d","site":"%d"}`
 	// 桌上玩家变更
 	fmt_change     = `{"opt":"change","info":[%s]}`
-	fmt_change_sub = `{"site":"%d","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d"},`
+	fmt_change_sub = `{"site":"%d","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d","sex":"%d"},`
 	//{"site":"0","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d"},
 	//{"site":"1","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d"},
 	//{"site":"2","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d"},
@@ -74,7 +74,7 @@ const (
 	// 被踢下线
 	fmt_kicked = `{"opt":"kicked"}`
 	// 玩家登陆的时候返回玩家信息
-	fmt_plyer_info = `{"opt":"login","nick":"%s","score":"%d","win":"%d","lose":"%d","run":"%d"}`
+	fmt_plyer_info = `{"opt":"login","nick":"%s","score":"%d","win":"%d","lose":"%d","run":"%d","sex":"%d"}`
 )
 
 type QueryMessage struct {
@@ -101,7 +101,7 @@ func (this *ProcessCent) Init() {
 func (this *ProcessCent) ProcessCmd(cmd int, text string, p *PlayerInfo) error {
 	//更新在线时间
 	p.LastOnline = time.Now().Unix()
-	if cmd != cmd_query_online &&  cmd != cmd_heart{
+	if cmd != cmd_query_online && cmd != cmd_heart {
 		log.Println(`[PROCESS] recv cmd:`, cmd, string(text[:]))
 	}
 
@@ -132,7 +132,7 @@ func (this *ProcessCent) ProcessCmd(cmd int, text string, p *PlayerInfo) error {
 }
 
 func (this *ProcessCent) prcess_query_self(p *PlayerInfo) error {
-	p.SendMessage(fmt.Sprintf(fmt_plyer_info, p.NickName, p.Score, p.Win, p.Lose, p.Run))
+	p.SendMessage(fmt.Sprintf(fmt_plyer_info, p.NickName, p.Score, p.Win, p.Lose, p.Run, p.Sex))
 	return nil
 }
 
@@ -179,20 +179,35 @@ func (this *ProcessCent) process_add_desk(text string, p *PlayerInfo) error {
 	}
 	//创建桌子
 	var desknum = qm.DeskNum
+	var sitenum = 0
+	var desk *DeskMnager = nil
 	if qm.Opt == "create" {
-		desknum = -1
+		desk, sitenum = GHall.CreateDesk(p)
+		if desk == nil {
+			p.SendMessage(fmt.Sprintf(fmt_add_desk, -1, sitenum))
+			return nil
+		}
+	} else {
+		//加入桌子
+		if desknum > 0 {
+			desk, sitenum = GHall.AddDesk(desknum, p)
+			if desk == nil {
+				p.SendMessage(fmt.Sprintf(fmt_add_desk, -1, sitenum))
+				return nil
+			}
+		} else { //快速加入
+			desk, sitenum = GHall.FastAddDesk(p)
+			if desk == nil {
+				p.SendMessage(fmt.Sprintf(fmt_add_desk, -1, sitenum))
+				return nil
+			}
+		}
 	}
-
-	desk, sid := GHall.AddDesk(desknum, p)
-	if desk == nil {
-		p.SendMessage(fmt.Sprintf(fmt_add_desk, -1, sid))
-		return nil
-	}
-	log.Println(`加入桌子成功`, desk.DeskNum, sid)
-	p.SendMessage(fmt.Sprintf(fmt_add_desk, desk.DeskNum, sid))
+	log.Println(`加入桌子成功`, desk.DeskNum, sitenum)
+	p.SendMessage(fmt.Sprintf(fmt_add_desk, desk.DeskNum, sitenum))
 	//广播消息
 	p.DeskNum = desk.DeskNum
-	p.SiteNum = sid
+	p.SiteNum = sitenum
 	p.Ready = 0
 	GHall.BroadDeskInfo(desk.DeskNum)
 	return nil

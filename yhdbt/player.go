@@ -31,6 +31,7 @@ type PlayerInfo struct {
 	PlayerInfoEx
 	Session    string   //通讯密码
 	NickName   string   //昵称
+	Sex        int      //性别 1 女 0 男
 	Uid        string   //用户id
 	Score      int      //积分
 	Win        int      //胜利计数
@@ -61,7 +62,7 @@ func (this *PlayerInfo) SendMessageCB(content string, cb func(string)) {
 }
 
 func (this *PlayerInfo) SendMessage(content string) {
-	log.Println(`[player] call SendMessage`, content)
+	//log.Println(`[player] call SendMessage`, content)
 	this.SendMessageCB(content, nil)
 }
 

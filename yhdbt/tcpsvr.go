@@ -65,7 +65,7 @@ func (this *TCPServer) processConn(conn net.Conn) {
 		log.Println(`[SERVER] login error: can not find the player info from uid.`)
 		return
 	}
-	pInfo.SendMessage(fmt.Sprintf(fmt_plyer_info, pInfo.NickName, pInfo.Score, pInfo.Win, pInfo.Lose, pInfo.Run))
+	pInfo.SendMessage(fmt.Sprintf(fmt_plyer_info, pInfo.NickName, pInfo.Score, pInfo.Win, pInfo.Lose, pInfo.Run, pInfo.Sex))
 	// 加入游戏大厅
 	GHall.AddPlayer(pInfo)
 }

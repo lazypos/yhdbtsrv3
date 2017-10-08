@@ -7,7 +7,7 @@ import (
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Println(`[MAIN] server start!`)
+	log.Println(`[MAIN] server start! version: 2017-10-08`)
 	if err := yhdbt.GDBOpt.Open(`./yhdbt_db`); err != nil {
 		log.Println(`[MAIN] db open error:`, err)
 		return

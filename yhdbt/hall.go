@@ -45,7 +45,7 @@ func (this *HallManger) LeaveHall(p *PlayerInfo) {
 
 // 定时广播消息
 func (this *HallManger) Routine_Broadcast() {
-	ticker := time.NewTicker(time.Second * 5)
+	ticker := time.NewTicker(time.Second * 10)
 	breakTicker := time.NewTicker(time.Second * 10)
 	for {
 		select {
@@ -64,7 +64,14 @@ func (this *HallManger) broadMessage(msg string) {
 }
 
 func (this *HallManger) broadHallInfo() {
-
+	//删除没人的桌子
+	this.muxHall.Lock()
+	defer this.muxHall.Unlock()
+	for k, d := range this.MapDesks {
+		if d.Empty() {
+			delete(this.MapDesks, k)
+		}
+	}
 }
 
 //断线检测
@@ -86,36 +93,12 @@ func (this *HallManger) checkBreak() {
 	}
 }
 
-// deskNum: <0创建桌子，0加入任意桌子，>0加入桌子 返回桌号 座位号
-func (this *HallManger) AddDesk(deskNum int, p *PlayerInfo) (*DeskMnager, int) {
+//创建桌子，从大到小创建
+func (this *HallManger) CreateDesk(p *PlayerInfo) (*DeskMnager, int) {
 	this.muxHall.Lock()
 	defer this.muxHall.Unlock()
 
-	//带桌号
-	if deskNum > 0 {
-		if deskNum > 100 {
-			return nil, -1
-		}
-		desk, ok := this.MapDesks[deskNum]
-		if ok {
-			site := desk.AddPlayer(p)
-			if site != -1 {
-				return nil, site
-			}
-		}
-		return nil, -1
-	}
-	//任意桌子
-	if deskNum == 0 {
-		//任意桌子
-		for _, desk := range this.MapDesks {
-			if s := desk.AddPlayer(p); s != -1 {
-				return desk, s
-			}
-		}
-	}
-	//创建桌子
-	for i := 1; i < max_desk; i++ {
+	for i := max_desk; i > 0; i-- {
 		_, ok := this.MapDesks[i]
 		if !ok {
 			desk := &DeskMnager{}
@@ -128,7 +111,48 @@ func (this *HallManger) AddDesk(deskNum int, p *PlayerInfo) (*DeskMnager, int) {
 	return nil, -1
 }
 
-func (this *HallManger) CreateDesk() (*DeskMnager, int) {
+//加入桌子
+func (this *HallManger) AddDesk(num int, p *PlayerInfo) (*DeskMnager, int) {
+	this.muxHall.Lock()
+	defer this.muxHall.Unlock()
+
+	if num > max_desk {
+		return nil, -1
+	}
+	desk, ok := this.MapDesks[num]
+	if ok {
+		site := desk.AddPlayer(p)
+		if site != -1 {
+			return desk, site
+		}
+	}
+	return nil, -1
+}
+
+//快速加入桌子
+func (this *HallManger) FastAddDesk(p *PlayerInfo) (*DeskMnager, int) {
+	this.muxHall.Lock()
+	defer this.muxHall.Unlock()
+
+	//先找有人的桌子
+	for _, d := range this.MapDesks {
+		site := d.AddPlayer(p)
+		if site != -1 {
+			return d, site
+		}
+	}
+
+	//创建新桌子
+	for i := max_desk; i > 0; i-- {
+		_, ok := this.MapDesks[i]
+		if !ok {
+			desk := &DeskMnager{}
+			desk.InitDesk(i)
+			s := desk.AddPlayer(p)
+			this.MapDesks[i] = desk
+			return desk, s
+		}
+	}
 	return nil, -1
 }
 

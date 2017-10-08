@@ -32,10 +32,10 @@ func CheckPass(pass string) error {
 
 //检查昵称合法性
 func CheckNick(nickname string) error {
-	if len(nickname) < 6 || len(nickname) > 14 {
+	if len(nickname) < 4 || len(nickname) > 18 {
 		return fmt.Errorf(`nickname length error.`)
 	}
-	if !regexp.MustCompile(`[\.|\\|/|\?|\(|\)|\[|\]]+`).MatchString(nickname) {
+	if regexp.MustCompile(`[\.|\\|/|\?|\(|\)|\[|\]]+`).MatchString(nickname) {
 		return fmt.Errorf(`nickname format error.`)
 	}
 	return nil

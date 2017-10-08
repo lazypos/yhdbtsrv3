@@ -20,14 +20,14 @@ type LoginManager struct {
 	muxLoginKey sync.Mutex
 	muxPlayers  sync.Mutex
 	loginPool   *sync.Pool
-	playerPool  *sync.Pool
+	//playerPool  *sync.Pool
 }
 
 var GLogin = &LoginManager{}
 
 func (this *LoginManager) Start() {
 	this.loginPool = &sync.Pool{New: func() interface{} { return new(loginInfo) }}
-	this.playerPool = &sync.Pool{New: func() interface{} { return new(PlayerInfo) }}
+	//this.playerPool = &sync.Pool{New: func() interface{} { return new(PlayerInfo) }}
 	this.MapPlayers = make(map[string]*PlayerInfo)
 	this.MapLoginKey = make(map[string]*loginInfo)
 	go this.Routine_CheckTimeOut()
@@ -47,13 +47,13 @@ func (this *LoginManager) SaveLoginKey(key, uid string) {
 //定期清除超时的登陆凭证
 func (this *LoginManager) Routine_CheckTimeOut() {
 	ticker := time.NewTicker(time.Second * 5)
-	tickerLeave := time.NewTicker(time.Second * 10)
+	//tickerLeave := time.NewTicker(time.Second * 10)
 	for {
 		select {
 		case <-ticker.C:
 			this.CheckLoginKeyTimeOut()
-		case <-tickerLeave.C:
-			//this.CheckLineOff()
+			// case <-tickerLeave.C:
+			// 	this.CheckLineOff()
 		}
 	}
 }
@@ -105,8 +105,8 @@ func (this *LoginManager) GetPlayerInfo(conn net.Conn, uid string) *PlayerInfo {
 	pInfo.Score = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_score`, uid)))
 	pInfo.Win = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_win`, uid)))
 	pInfo.Lose = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_lose`, uid)))
-	pInfo.Run = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_run`, uid))) 
-
+	pInfo.Run = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_run`, uid)))
+	pInfo.Sex = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_sex`, uid)))
 	// if pInfo == nil {
 	// 	log.Println(`[login] new login.`)
 	// 	pInfo = this.playerPool.Get().(*PlayerInfo)

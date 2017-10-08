@@ -312,9 +312,9 @@ func (this *DeskMnager) broadDeskInfo() {
 	//`{"site":"%d","name":"%s","ready":"%d","socre":"%d","win":"%d","lose":"%d","run":"%d"},`
 	for i, p := range this.arrPlayers {
 		if p != nil {
-			buf.WriteString(fmt.Sprintf(fmt_change_sub, i, p.NickName, p.Ready, p.Score, p.Win, p.Lose, p.Run))
+			buf.WriteString(fmt.Sprintf(fmt_change_sub, i, p.NickName, p.Ready, p.Score, p.Win, p.Lose, p.Run, p.Sex))
 		} else {
-			buf.WriteString(fmt.Sprintf(fmt_change_sub, i, "", 0, 0, 0, 0, 0))
+			buf.WriteString(fmt.Sprintf(fmt_change_sub, i, "", 0, 0, 0, 0, 0, 0))
 		}
 	}
 	buf.Truncate(buf.Len() - 1)
@@ -394,4 +394,16 @@ func (this *DeskMnager) OnReady() {
 
 	//游戏开始
 	this.GmeStart()
+}
+
+func (this *DeskMnager) Empty() bool {
+	this.muxDesk.Lock()
+	defer this.muxDesk.Unlock()
+
+	for _, v := range this.arrPlayers {
+		if v != nil {
+			return false
+		}
+	}
+	return true
 }
