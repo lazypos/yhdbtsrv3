@@ -107,6 +107,7 @@ func (this *LoginManager) GetPlayerInfo(conn net.Conn, uid string) *PlayerInfo {
 	pInfo.Lose = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_lose`, uid)))
 	pInfo.Run = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_run`, uid)))
 	pInfo.Sex = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_sex`, uid)))
+	pInfo.He = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_he`, uid)))
 	// if pInfo == nil {
 	// 	log.Println(`[login] new login.`)
 	// 	pInfo = this.playerPool.Get().(*PlayerInfo)

@@ -164,10 +164,15 @@ func (this *DeskMnager) SaveResult(rst []int) {
 			if err := GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_win`, p.Uid)), p.Win); err != nil {
 				log.Println(`[DESK] save player win error:`, p.Uid, p.Win)
 			}
-		} else {
+		} else if v < 0 {
 			p.Lose -= v
 			if err := GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_lose`, p.Uid)), p.Lose); err != nil {
 				log.Println(`[DESK] save player lose error:`, p.Uid, p.Lose)
+			}
+		} else {
+			p.He += 1
+			if err := GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_he`, p.Uid)), p.He); err != nil {
+				log.Println(`[DESK] save player he error:`, p.Uid, p.He)
 			}
 		}
 		if err := GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_score`, p.Uid)), p.Score); err != nil {
@@ -309,12 +314,11 @@ func (this *DeskMnager) broadDeskInfo() {
 	defer this.muxDesk.Unlock()
 
 	buf := bytes.NewBufferString("")
-	//`{"site":"%d","name":"%s","ready":"%d","socre":"%d","win":"%d","lose":"%d","run":"%d"},`
 	for i, p := range this.arrPlayers {
 		if p != nil {
-			buf.WriteString(fmt.Sprintf(fmt_change_sub, i, p.NickName, p.Ready, p.Score, p.Win, p.Lose, p.Run, p.Sex))
+			buf.WriteString(fmt.Sprintf(fmt_change_sub, i, p.NickName, p.Ready, p.Score, p.Win, p.Lose, p.Run, p.Sex, p.He))
 		} else {
-			buf.WriteString(fmt.Sprintf(fmt_change_sub, i, "", 0, 0, 0, 0, 0, 0))
+			buf.WriteString(fmt.Sprintf(fmt_change_sub, i, "", 0, 0, 0, 0, 0, 0, 0))
 		}
 	}
 	buf.Truncate(buf.Len() - 1)

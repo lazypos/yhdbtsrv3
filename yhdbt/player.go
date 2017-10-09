@@ -37,6 +37,7 @@ type PlayerInfo struct {
 	Win        int      //胜利计数
 	Lose       int      //失败计数
 	Run        int      //逃跑计数
+	He         int      //平局计数
 	LoginTimes int      //登陆计数
 	LastOnline int64    //最后在线时间
 	Conn       net.Conn //连接句柄
@@ -97,7 +98,7 @@ func (this *PlayerInfo) Routine_Recv() {
 			break
 		}
 		// 处理请求
-		log.Println(`[PLYAER] recv cmd:`, cmd, string(content[:]))
+		//log.Println(`[PLYAER] recv cmd:`, cmd, string(content[:]))
 		if err = GProcess.ProcessCmd(cmd, string(content[:]), this); err != nil {
 			log.Println(`[PLAYER] process cmd error,`, err)
 			break

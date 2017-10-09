@@ -9,6 +9,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"sync"
 	"time"
@@ -20,6 +21,8 @@ const (
 	err_code_exist     = 0x8001001
 	err_code_noexist   = 0x8001002
 	err_code_nickexist = 0x8001003 //昵称存在
+	err_code_busy      = 0x8001004 //太频繁
+	err_code_verify    = 0x8001005 //验证码错误
 )
 
 const (
@@ -29,18 +32,72 @@ const (
 //用户注册服务器
 type RegistServer struct {
 	muxRegist sync.Mutex
+	mapTime   map[string]int64  //验证码时间
+	mapVeri   map[string]string //验证码
 }
 
 var GRegistServer = &RegistServer{}
 
 func (this *RegistServer) Start() error {
+	rand.Seed(time.Now().UnixNano())
+	this.mapTime = make(map[string]int64)
+	this.mapVeri = make(map[string]string)
 	http.HandleFunc("/regist", this.CRegist)     //注册
 	http.HandleFunc("/login", this.CLogin)       //登陆
 	http.HandleFunc("/version", this.CVersion)   //版本查询
 	http.HandleFunc("/password", this.CPassword) //修改密码
+	http.HandleFunc("/verify", this.CVerify)     //获取验证码
 	http.HandleFunc("/pay", this.CPayCenter)     //充值
 	http.Handle("/", http.FileServer(http.Dir("web")))
 	return http.ListenAndServe(":51888", nil)
+}
+
+//获取验证码
+func (this *RegistServer) CVerify(rw http.ResponseWriter, req *http.Request) {
+	this.muxRegist.Lock()
+	defer this.muxRegist.Unlock()
+
+	log.Println(`验证码,`, req.RemoteAddr)
+
+	user := req.FormValue("phone")
+	//验证手机号
+	if err := CheckUser(user); err != nil {
+		fmt.Fprintf(rw, `{"error":"%d"}`, err_code_format)
+		return
+	}
+	//注册总量限制
+	if len(this.mapTime) > 200 {
+		fmt.Fprintf(rw, `{"error":"%d"}`, err_code_busy)
+		return
+	}
+
+	//是否频繁
+	now := time.Now().Unix()
+	t, ok := this.mapTime[user]
+	if ok && now-t < 180 {
+		fmt.Fprintf(rw, `{"error":"%d"}`, err_code_busy)
+		return
+	}
+	this.mapTime[user] = now
+
+	//是否已经注册过
+	ouid := GDBOpt.GetValue([]byte(user))
+	if len(ouid) > 0 {
+		log.Println(`[REGIST] 手机号已经存在.`, user)
+		fmt.Fprintf(rw, `{"error":"%d"}`, err_code_exist)
+		return
+	}
+
+	//发送短信
+	n := time.Now().Unix() + rand.Int63()
+	veri := fmt.Sprintf("%6.d", n)[:6]
+	log.Println(`[REGIST] `, user, "验证码", veri)
+	if !SendSMS(user, veri) {
+		fmt.Fprintf(rw, `{"error":"%d"}`, err_code_busy)
+		return
+	}
+	this.mapVeri[user] = veri
+	fmt.Fprintf(rw, `{"error":"%d"}`, err_code_ok)
 }
 
 //修改密码
@@ -68,11 +125,23 @@ func (this *RegistServer) CheckUserPassNick(user, pass, nick string) int {
 
 //处理注册请求
 func (this *RegistServer) CRegist(rw http.ResponseWriter, req *http.Request) {
+	this.muxRegist.Lock()
+	defer this.muxRegist.Unlock()
+
 	user := req.FormValue("user")
 	pass := req.FormValue("pass")
 	nick := req.FormValue("nick")
 	sex := req.FormValue("sex")
+	veri := req.FormValue("veri")
 	log.Println(`[REGIST] regist：`, nick)
+
+	v, ok := this.mapVeri[user]
+	if !ok || v != veri {
+		log.Println(`[REGIST] 验证码错误`, user)
+		fmt.Fprintf(rw, `{"error":"%d"}`, err_code_verify)
+		return
+	}
+
 	if code := this.CheckUserPassNick(user, pass, nick); code != err_code_ok {
 		fmt.Fprintf(rw, `{"error":"%d"}`, err_code_format)
 		return
@@ -93,8 +162,6 @@ func (this *RegistServer) CPayCenter(rw http.ResponseWriter, req *http.Request) 
 
 //注册逻辑函数
 func (this *RegistServer) Regist(username, pass, nick, sex string) int {
-	this.muxRegist.Lock()
-	defer this.muxRegist.Unlock()
 
 	// 查看账户是否存在
 	ouid := GDBOpt.GetValue([]byte(username))
@@ -125,6 +192,7 @@ func (this *RegistServer) Regist(username, pass, nick, sex string) int {
 	mInfo[fmt.Sprintf(`%s_win`, uid)] = []byte("0")
 	mInfo[fmt.Sprintf(`%s_lose`, uid)] = []byte("0")
 	mInfo[fmt.Sprintf(`%s_run`, uid)] = []byte("0")
+	mInfo[fmt.Sprintf(`%s_he`, uid)] = []byte("0")
 	//默认男性
 	if sex == "1" {
 		mInfo[fmt.Sprintf(`%s_sex`, uid)] = []byte("1")

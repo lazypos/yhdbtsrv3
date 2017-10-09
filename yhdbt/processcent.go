@@ -22,6 +22,7 @@ const (
 	cmd_query_online  = 0x1008 //查询在线人数
 	cmd_add_hall      = 0x1009 //加入大厅
 	cmd_query_self    = 0x1010 //查询自己信息
+	cmd_exit          = 0x1011 //退出
 )
 
 const (
@@ -47,7 +48,7 @@ const (
 	fmt_add_desk = `{"opt":"add","desk":"%d","site":"%d"}`
 	// 桌上玩家变更
 	fmt_change     = `{"opt":"change","info":[%s]}`
-	fmt_change_sub = `{"site":"%d","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d","sex":"%d"},`
+	fmt_change_sub = `{"site":"%d","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d","sex":"%d","he":"%d"},`
 	//{"site":"0","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d"},
 	//{"site":"1","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d"},
 	//{"site":"2","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d"},
@@ -74,7 +75,7 @@ const (
 	// 被踢下线
 	fmt_kicked = `{"opt":"kicked"}`
 	// 玩家登陆的时候返回玩家信息
-	fmt_plyer_info = `{"opt":"login","nick":"%s","score":"%d","win":"%d","lose":"%d","run":"%d","sex":"%d"}`
+	fmt_plyer_info = `{"opt":"login","nick":"%s","score":"%d","win":"%d","lose":"%d","run":"%d","sex":"%d","he":"%d"}`
 )
 
 type QueryMessage struct {
@@ -132,7 +133,7 @@ func (this *ProcessCent) ProcessCmd(cmd int, text string, p *PlayerInfo) error {
 }
 
 func (this *ProcessCent) prcess_query_self(p *PlayerInfo) error {
-	p.SendMessage(fmt.Sprintf(fmt_plyer_info, p.NickName, p.Score, p.Win, p.Lose, p.Run, p.Sex))
+	p.SendMessage(fmt.Sprintf(fmt_plyer_info, p.NickName, p.Score, p.Win, p.Lose, p.Run, p.Sex, p.He))
 	return nil
 }
 
