@@ -193,6 +193,7 @@ func (this *RegistServer) Regist(username, pass, nick, sex string) int {
 	mInfo[fmt.Sprintf(`%s_lose`, uid)] = []byte("0")
 	mInfo[fmt.Sprintf(`%s_run`, uid)] = []byte("0")
 	mInfo[fmt.Sprintf(`%s_he`, uid)] = []byte("0")
+	mInfo[fmt.Sprintf(`%s_regtime`, uid)] = []byte(time.Now().String())
 	//默认男性
 	if sex == "1" {
 		mInfo[fmt.Sprintf(`%s_sex`, uid)] = []byte("1")

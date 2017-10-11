@@ -143,7 +143,7 @@ func (this *HallManger) FastAddDesk(p *PlayerInfo) (*DeskMnager, int) {
 	}
 
 	//创建新桌子
-	for i := max_desk; i > 0; i-- {
+	for i := 1; i < max_desk; i++ {
 		_, ok := this.MapDesks[i]
 		if !ok {
 			desk := &DeskMnager{}
