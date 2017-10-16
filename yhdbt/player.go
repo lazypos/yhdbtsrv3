@@ -38,6 +38,7 @@ type PlayerInfo struct {
 	Lose       int      //失败计数
 	Run        int      //逃跑计数
 	He         int      //平局计数
+	Zong       int      //总局数
 	LoginTimes int      //登陆计数
 	LastOnline int64    //最后在线时间
 	Conn       net.Conn //连接句柄
@@ -73,7 +74,7 @@ func (this *PlayerInfo) Routine_Broad() {
 		select {
 		case msg := <-this.chBroad:
 			this.muxPlayer.Lock()
-			log.Println(`[PLAYER] send message`, msg)
+			//log.Println(`[PLAYER] send message`, msg)
 			err := SendCommond(this.Conn, []byte(msg.msg))
 			if err != nil {
 				log.Println(`[PLAYER] send error`, err)

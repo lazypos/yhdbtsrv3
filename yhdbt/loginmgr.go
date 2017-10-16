@@ -108,22 +108,8 @@ func (this *LoginManager) GetPlayerInfo(conn net.Conn, uid string) *PlayerInfo {
 	pInfo.Run = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_run`, uid)))
 	pInfo.Sex = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_sex`, uid)))
 	pInfo.He = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_he`, uid)))
-	// if pInfo == nil {
-	// 	log.Println(`[login] new login.`)
-	// 	pInfo = this.playerPool.Get().(*PlayerInfo)
-	// 	this.MapPlayers[uid] = pInfo
-	// 	pInfo.Init(conn)
+	pInfo.Zong = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_zong`, uid)))
 
-	// 	pInfo.Uid = uid
-	// 	pInfo.NickName = string(GDBOpt.GetValue([]byte(fmt.Sprintf(`%s_nick`, uid)))[:])
-	// 	pInfo.Score = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_score`, uid)))
-	// 	pInfo.Win = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_win`, uid)))
-	// 	pInfo.Lose = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_lose`, uid)))
-	// 	pInfo.Run = GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_run`, uid)))
-	// } else {
-	// 	log.Println(`[login] ReInit.`)
-	// 	pInfo.ReInit(conn)
-	// }
 	return pInfo
 }
 

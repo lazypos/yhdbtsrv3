@@ -1,6 +1,7 @@
 package yhdbt
 
 import (
+	"log"
 	"sync"
 	"time"
 )
@@ -19,12 +20,13 @@ type Worker struct {
 var GWorker = &Worker{}
 
 func (this *Worker) Start() {
+	this.UpdateRank()
 	go this.Routine_worker()
 }
 
 // 间隔更新线程
 func (this *Worker) Routine_worker() {
-	rankTicker := time.NewTicker(time.Hour)
+	rankTicker := time.NewTicker(time.Hour * 6)
 
 	for {
 		select {
@@ -37,7 +39,16 @@ func (this *Worker) Routine_worker() {
 // 更新排名
 func (this *Worker) UpdateRank() {
 	// 遍历所有人员
+	r, err := GDBOpt.GetMaxScore(5)
+	if err != nil {
+		log.Println(`获取排名信息失败.`)
+		return
+	}
 
+	log.Println(`获取排名信息`, r)
+	this.muxRank.Lock()
+	defer this.muxRank.Unlock()
+	this.arrScore = r
 }
 
 // 获取排名信息

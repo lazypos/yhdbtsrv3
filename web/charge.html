@@ -1,0 +1,121 @@
+<html><head>
+<meta charset="utf-8">
+<link href="https://cdn.bootcss.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+<script src="http://www.veryhuo.com/uploads/Common/js/jQuery.md5.js"></script>
+<title>大板同充值</title>
+<script  type="text/javascript">
+	function checkPhone(phone){
+		var myreg = /^(((13[0-9]{1})|(15[0-9]{1})|(18[0-9]{1}))+\d{8})$/; 
+		if(!myreg.test(phone)) 
+			return false; 
+		return true;
+	}
+	function checkPass(pass){
+		var myreg = /^[A-Za-z0-9]{6,16}$/; 
+		if(!myreg.test(pass)) 
+			return false; 
+		return true;
+	}
+	
+	function pcpay(pass){
+	
+		paytype = $('input:radio[name="optionsRadios"]:checked').val();
+		phone = $("#phone").val();
+		if (!checkPhone(phone)){
+			$("#msg").html("手机号码错误.")
+			return;
+		}
+		
+		pass = $("#pass").val();
+		if (!checkPass(pass)){
+			$("#msg").html("密码格式不正确.");
+			return;
+		}
+		$("#pcpay").attr("disabled", true);
+		$("#sjpay").attr("disabled", true);
+		$("#msg").html("等待跳转支付，长时间没有跳转请刷新页面后重新点击.")
+		npass = $.md5(pass)
+		url = "pay?user=" + phone + "&pass=" + npass + "&type=" + paytype + "&opt=1"
+		$.get(url,function(data, status){ 
+			$(location).attr('href', data);
+		});  
+		
+	}
+	
+	function phonepay(pass){
+		paytype = $('input:radio[name="optionsRadios"]:checked').val();
+		phone = $("#phone").val();
+		if (!checkPhone(phone)){
+			$("#msg").html("手机号码错误.")
+			return;
+		}
+		pass = $("#pass").val();
+		if (!checkPass(pass)){
+			$("#msg").html("密码格式不正确.");
+			return;
+		}
+		$("#pcpay").attr("disabled", true);
+		$("#sjpay").attr("disabled", true);
+		$("#msg").html("等待跳转支付，长时间没有跳转请刷新页面后重新点击.")
+		npass = $.md5(pass)
+		url = "pay?user=" + phone + "&pass=" + npass + "&type=" + paytype + "&opt=2"
+		$.get(url,function(data, status){ 
+			$(location).attr('href', data);
+		});  
+	}
+	
+</script>
+</head>
+
+<body style="background:#c6dbfb">
+<h1 style="text-align:center; padding-bottom:30px;">大板同充值</h1>
+<div style="margin:0 auto;">
+<form class="bs-example bs-example-form" role="form" style="width:300px; margin:0 auto;">
+		<div class="input-group">
+            <span class="input-group-addon">充值账号：</span>
+            <input id="phone" type="text" maxlength="11" class="form-control" placeholder="登陆时的手机号">
+        </div>
+		<br>
+		 <div class="input-group">
+            <span class="input-group-addon">登陆密码：</span>
+            <input id="pass" type="password" maxlength="16" class="form-control" placeholder="登录密码">
+        </div>
+	<br>
+	
+<div class="radio" style="">
+    <label style="float:left;">
+        <input type="radio" name="optionsRadios" id="optionsRadios1" value="1" checked> 5元 --> 500积分
+    </label>
+	<br><br>
+	<label style="float:left;">
+        <input type="radio" name="optionsRadios" id="optionsRadios2" value="2" > 20元  --> 2400积分<span style="color:red;">(+20%)</span>
+    </label>
+	<br><br>
+	<label style="float:left;">
+        <input type="radio" name="optionsRadios" id="optionsRadios3" value="3" > 100元  --> 14000积分<span style="color:red;">(+40%)</span>
+    </label>
+	<br><br>
+	<label style="float:left;">
+        <input type="radio" name="optionsRadios" id="optionsRadios3" value="4" > 600元  --> 96000积分<span style="color:red;">(+60%)</span>
+    </label>
+</div>
+
+ </form>
+</div>
+<br>
+<br>
+<div style="width:300px;margin:0 auto;">
+<h5 id="msg">电脑访问请用扫二维码付款。<h5>
+<br>
+<button id="pcpay" type="button" class="btn btn-default" style="float:left;" onclick="pcpay()" >微信扫码付款</button>
+		<span style="float:right;padding-right:10px;">&nbsp;</span>
+		<button id="sjpay" type="button" class="btn btn-default" style="float:right;" onclick="phonepay()" >支付宝付款(手机)</button>
+</div>
+<footer style="padding-top: 50px; text-align:center;">
+<b style="color:red;">网站已在公安部备案</b>   浙ICP备17016108号-1
+</footer>
+</body>
+
+</html>
+

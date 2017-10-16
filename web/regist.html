@@ -88,7 +88,7 @@
 			return;
 		}
 		$("#btyanzh").attr("disabled", true);
-		$("#btyanzh").html("请稍等...")
+		$("#btyanzh").html("请稍等，长时间收不到验证码请刷新页面后再试。")
 		url = "verify?phone=" + phone
 		$.get(url,function(data, status){ 
 			eval("var jsondata="+data);
@@ -106,10 +106,14 @@
 			alert("获取验证码太频繁，请3分钟后再试.");
 		});  
 	}
+	
+	function pay(){
+		$(location).attr('href', '/charge.html');
+	}
 </script>
 </head>
 
-<body>
+<body style="background:#c6dbfb">
 <h1 style="text-align:center; padding-bottom:30px;">欢迎注册大板同账号</h1>
 <div style="margin:0 auto;">
 <form class="bs-example bs-example-form" role="form" style="width:300px; margin:0 auto;">
@@ -133,7 +137,7 @@
         <br>
         <div class="input-group">
             <span class="input-group-addon">密码：</span>
-            <input id="pass" type="password" class="form-control" placeholder="6-16个数字或字母">
+            <input id="pass" type="password" maxlength="16" class="form-control" placeholder="6-16个数字或字母">
         </div>
 		<br>
 		<div class="input-group">
@@ -148,15 +152,18 @@
 		<input type="radio" name="optionsRadios" id="optionsRadios2" value="1" > 女
     </label>
 </div>
-	<div class="col-sm-offset-2 col-sm-10" style="">
+    </form>
+</div>
+<div style="width:300px;margin:0 auto;">
 		<button type="button" class="btn btn-default" style="float:right;" onclick="regist()" >注册</button>
 		<span style="float:right;padding-right:10px;">&nbsp;</span>
 		<button type="button" class="btn btn-default" style="float:right;" onclick="modify()" >修改密码</button>
 		<span style="float:right;padding-right:10px;">&nbsp;</span>
-		<button type="button" class="btn btn-default" style="float:right;" onclick="pay()" >充值</button>
-    </div>
-    </form>
+		<button type="button" class="btn btn-default" style="float:right;" onclick="pay()" >充值(送积分)</button>
 </div>
+<footer style="padding-top: 50px; text-align:center;">
+<b style="color:red;">网站已在公安部备案</b>  浙ICP备17016108号-1
+</footer>
 </body>
 
 </html>

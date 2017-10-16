@@ -33,12 +33,12 @@ const (
 // 回复信息
 const (
 	// 查询版本号
-	fmt_query_version = `{"opt":"version","version":"61"}`
+	fmt_query_version = `{"opt":"version","version":"63"}`
 	// 查询在线
 	fmt_query_online = `{"opt":"online","count":"%d"}`
 	// 查询排行榜 昵称和分数
 	fmt_query_rank     = `{"opt":"rank","info":[%s]}`
-	fmt_query_rank_sub = `{"id":"%d","nick":"%s","score":"%d"},`
+	fmt_query_rank_sub = `{"id":"%d","nick":"%s","score":"%s"},`
 	//{"id":"0","nick":"%s","score":"%d"},
 	//{"id":"1","nick":"%s","score":"%d"},
 	//{"id":"2","nick":"%s","score":"%d"},
@@ -48,7 +48,7 @@ const (
 	fmt_add_desk = `{"opt":"add","desk":"%d","site":"%d"}`
 	// 桌上玩家变更
 	fmt_change     = `{"opt":"change","info":[%s]}`
-	fmt_change_sub = `{"site":"%d","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d","sex":"%d","he":"%d"},`
+	fmt_change_sub = `{"site":"%d","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d","sex":"%d","he":"%d","zong":"%d"},`
 	//{"site":"0","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d"},
 	//{"site":"1","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d"},
 	//{"site":"2","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d"},
@@ -75,7 +75,9 @@ const (
 	// 被踢下线
 	fmt_kicked = `{"opt":"kicked"}`
 	// 玩家登陆的时候返回玩家信息
-	fmt_plyer_info = `{"opt":"login","nick":"%s","score":"%d","win":"%d","lose":"%d","run":"%d","sex":"%d","he":"%d"}`
+	fmt_plyer_info = `{"opt":"login","nick":"%s","score":"%d","win":"%d","lose":"%d","run":"%d","sex":"%d","he":"%d","zong":"%d"}`
+	// 积分不够
+	fmt_score_less = `{"opt":"less"}`
 )
 
 type QueryMessage struct {
@@ -133,7 +135,7 @@ func (this *ProcessCent) ProcessCmd(cmd int, text string, p *PlayerInfo) error {
 }
 
 func (this *ProcessCent) prcess_query_self(p *PlayerInfo) error {
-	p.SendMessage(fmt.Sprintf(fmt_plyer_info, p.NickName, p.Score, p.Win, p.Lose, p.Run, p.Sex, p.He))
+	p.SendMessage(fmt.Sprintf(fmt_plyer_info, p.NickName, p.Score, p.Win, p.Lose, p.Run, p.Sex, p.He, p.Zong))
 	return nil
 }
 
@@ -162,7 +164,9 @@ func (this *ProcessCent) process_rank(text string, p *PlayerInfo) error {
 	m := GWorker.GetScoreRank()
 	buf := bytes.NewBufferString("")
 	for k, v := range m {
-		buf.WriteString(fmt.Sprintf(fmt_query_rank_sub, k, v.nick, v.socre))
+		if v != nil {
+			buf.WriteString(fmt.Sprintf(fmt_query_rank_sub, k, v.nick, v.socre))
+		}
 	}
 	if buf.Len() > 0 {
 		buf.Truncate(buf.Len() - 1)
@@ -216,6 +220,10 @@ func (this *ProcessCent) process_add_desk(text string, p *PlayerInfo) error {
 
 //玩家举手
 func (this *ProcessCent) process_ready(text string, p *PlayerInfo) error {
+	if p.Score < 50 {
+		p.SendMessage(fmt_score_less)
+		return nil
+	}
 	p.Ready = 1
 	desk := GHall.GetDesk(p.DeskNum)
 	if desk != nil {

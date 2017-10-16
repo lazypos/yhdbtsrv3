@@ -25,6 +25,6 @@ func main() {
 	yhdbt.GHall.Start()
 	yhdbt.GKicked.Start()
 	yhdbt.GWorker.Start()
-	yhdbt.GTCPServer.Start("9999")
+	yhdbt.GTCPServer.Start("9998")
 	yhdbt.GRegistServer.Start()
 }

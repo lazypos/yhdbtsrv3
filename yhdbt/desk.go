@@ -34,6 +34,7 @@ type DeskMnagerEx struct {
 	nP0Score    int   //甲方得分
 	nP1Score    int   //乙方得分
 	RunCounts   int   //出完人数
+	TimerCounts int   //检测超时断线
 }
 
 //桌子
@@ -113,14 +114,22 @@ func (this *DeskMnager) playerRun(p *PlayerInfo) {
 	if err := GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_run`, p.Uid)), p.Run); err != nil {
 		log.Println(`[DESK] save player run error:`, p.Uid, p.Run)
 	}
+	p.Zong += 1
+	if err := GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_zong`, p.Uid)), p.Zong); err != nil {
+		log.Println(`[DESK] save player Zong error:`, p.Uid, p.Zong)
+	}
 	this.arrPlayers[p.SiteNum] = nil
 	p.DeskNum = -1
 	for _, v := range this.arrPlayers {
 		if v != nil {
-			v.SendMessage(fmt.Sprintf(fmt_run, p.SiteNum, p.NickName, this.baseScore*10))
+			v.Zong += 1
+			if err := GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_zong`, v.Uid)), v.Zong); err != nil {
+				log.Println(`[DESK] save player Zong error:`, v.Uid, v.Zong)
+			}
+			v.SendMessage(fmt.Sprintf(fmt_run, p.SiteNum, p.NickName, this.baseScore*4))
 		}
 	}
-	p.Score -= this.baseScore * 10
+	p.Score -= this.baseScore * 4
 	if err := GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_score`, p.Uid)), p.Score); err != nil {
 		log.Println(`[DESK] save player score error:`, p.Uid, p.Score)
 	}
@@ -158,7 +167,11 @@ func (this *DeskMnager) SaveResult(rst []int) {
 	for i, v := range rst {
 		//计算盘和分数
 		p := this.arrPlayers[i]
-		p.Score += v * this.baseScore
+		if v > 0 {
+			p.Score += (v * this.baseScore * 9) / 10
+		} else {
+			p.Score += v * this.baseScore
+		}
 		if v > 0 {
 			p.Win += v
 			if err := GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_win`, p.Uid)), p.Win); err != nil {
@@ -177,6 +190,10 @@ func (this *DeskMnager) SaveResult(rst []int) {
 		}
 		if err := GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_score`, p.Uid)), p.Score); err != nil {
 			log.Println(`[DESK] save player score error:`, p.Uid, p.Score)
+		}
+		p.Zong += 1
+		if err := GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_zong`, p.Uid)), p.Zong); err != nil {
+			log.Println(`[DESK] save player Zong error:`, p.Uid, p.Zong)
 		}
 	}
 }
@@ -275,6 +292,7 @@ func (this *DeskMnager) ProcessMsg(m *DeskMsg) {
 	}
 
 	this.nNowPutSit = next
+	this.TimerCounts = 0
 	for _, p := range this.arrPlayers {
 		p.SendMessage(fmt.Sprintf(fmt_game_put, m.Site, deskmsg.Cards, len(this.arrPlayers[m.Site].ArrCards), this.nDeskScore, next, must))
 		p.SendMessage(fmt.Sprintf(fmt_score, this.nP0Score, this.nP1Score))
@@ -316,9 +334,9 @@ func (this *DeskMnager) broadDeskInfo() {
 	buf := bytes.NewBufferString("")
 	for i, p := range this.arrPlayers {
 		if p != nil {
-			buf.WriteString(fmt.Sprintf(fmt_change_sub, i, p.NickName, p.Ready, p.Score, p.Win, p.Lose, p.Run, p.Sex, p.He))
+			buf.WriteString(fmt.Sprintf(fmt_change_sub, i, p.NickName, p.Ready, p.Score, p.Win, p.Lose, p.Run, p.Sex, p.He, p.Zong))
 		} else {
-			buf.WriteString(fmt.Sprintf(fmt_change_sub, i, "", 0, 0, 0, 0, 0, 0, 0))
+			buf.WriteString(fmt.Sprintf(fmt_change_sub, i, "", 0, 0, 0, 0, 0, 0, 0, 0))
 		}
 	}
 	buf.Truncate(buf.Len() - 1)
@@ -334,8 +352,6 @@ func (this *DeskMnager) KickPlayer() {
 	nowtime := time.Now().Unix()
 
 	this.muxDesk.Lock()
-	defer this.muxDesk.Unlock()
-
 	for k, v := range this.MapAddTimes {
 		// 超过一分钟不准备
 		p := this.arrPlayers[k]
@@ -345,6 +361,13 @@ func (this *DeskMnager) KickPlayer() {
 			this.MapAddTimes[k] = 0
 			//GProcess.ProcessCmd(cmd_desk_leave, "", p)
 		}
+	}
+	this.muxDesk.Unlock()
+
+	this.TimerCounts += 5
+	if this.TimerCounts > 35 && this.bPlaying {
+		this.LeavePlayer(this.arrPlayers[this.nNowPutSit])
+		this.bPlaying = false
 	}
 }
 
@@ -358,6 +381,7 @@ func (this *DeskMnager) GmeStart() {
 	this.nP0Score = 0
 	this.nP1Score = 0
 	this.RunCounts = 0
+	this.TimerCounts = 0
 	for i, _ := range this.arrPlayers {
 		this.arrPlayers[i].RunNum = -1
 		this.arrPlayers[i].Ready = 0

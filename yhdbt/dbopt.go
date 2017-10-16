@@ -1,9 +1,12 @@
 package yhdbt
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/syndtr/goleveldb/leveldb"
+	"io/ioutil"
 	"log"
+	"sort"
 	"strconv"
 )
 
@@ -74,4 +77,102 @@ func (this *DBOpt) GetBatch(m map[string][]byte) {
 	for k, _ := range m {
 		m[k] = this.GetValue([]byte(k))
 	}
+}
+
+func (this *DBOpt) GetMaxScore(max int) ([]*RankScoreInfo, error) {
+	type info struct {
+		Score int
+		Uid   string
+		Nick  string
+	}
+
+	arr := make([]int, max)
+	m := make([]*info, 5)
+	count := 0
+	lowLevel := -1 //积分下限
+
+	iter := this.DBConn.NewIterator(nil, nil)
+	for iter.Next() {
+		key := iter.Key()
+		idx := bytes.LastIndex(key, []byte("_score"))
+		//log.Println(string(key[:]), string(iter.Value()[:]))
+		if idx > 0 {
+			n, err := strconv.Atoi(string(iter.Value()[:]))
+			if err != nil {
+				continue
+			}
+			uid := string(key[:idx])
+			if count < 5 {
+				arr[count] = n
+				if lowLevel < 0 {
+					lowLevel = n
+				}
+				if lowLevel > 0 && n < lowLevel {
+					lowLevel = n
+				}
+				nick := string(this.GetValue([]byte(fmt.Sprintf(`%s_nick`, uid)))[:])
+				m[count] = &info{Score: n, Uid: uid, Nick: nick}
+				//log.Println(count, m, nick, uid, n)
+				count++
+			} else {
+				if n >= lowLevel {
+					lowLevel = n
+					sort.Ints(arr)
+					low := arr[0]
+					if n > low {
+						arr[0] = n
+						for i, v := range m {
+							if v.Score == low {
+								nick := string(this.GetValue([]byte(fmt.Sprintf(`%s_nick`, uid)))[:])
+								m[i].Score = n
+								m[i].Uid = uid
+								m[i].Nick = nick
+								break
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	iter.Release()
+	sort.Ints(arr)
+	//log.Println(arr, m)
+	rst := make([]*RankScoreInfo, max)
+	for i := 0; i < max; i++ {
+		nowScore := arr[max-i-1]
+		if nowScore == 0 {
+			continue
+		}
+		//log.Println(i, nowScore)
+		for _, v := range m {
+			//log.Println(v.Nick, v.Score, v.Uid)
+			if v.Score == nowScore {
+				log.Println(i, nowScore, v.Nick, v.Score, v.Uid)
+				rst[i] = &RankScoreInfo{socre: fmt.Sprintf(`%d`, nowScore), nick: v.Nick}
+				v.Score = -1
+				break
+			}
+		}
+	}
+	return rst, iter.Error()
+}
+
+func (this *DBOpt) test() {
+	buf := bytes.NewBufferString("")
+	iter := this.DBConn.NewIterator(nil, nil)
+	for iter.Next() {
+		buf.Write(iter.Key())
+		buf.WriteString("=")
+		buf.Write(iter.Value())
+		buf.WriteString("\r\n")
+	}
+	ioutil.WriteFile("f:/test/a.txt", buf.Bytes(), 0x666)
+}
+
+func ParseDB(dbPath string) {
+	dbopt := &DBOpt{}
+	dbopt.Open(dbPath)
+	dbopt.test()
+	defer dbopt.Close()
 }

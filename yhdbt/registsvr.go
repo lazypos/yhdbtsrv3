@@ -11,6 +11,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -23,17 +24,32 @@ const (
 	err_code_nickexist = 0x8001003 //昵称存在
 	err_code_busy      = 0x8001004 //太频繁
 	err_code_verify    = 0x8001005 //验证码错误
+
+	err_pay_format = 20
+	err_pay_login  = 21 // 充值登陆错误
+	err_pay_busy   = 22
+	err_pay_system = 23 //系统错误
 )
 
 const (
 	rpy_login_fmt = `{"error":"%d", "loginkey":"%s"}`
+	rpy_pay_fmt   = `{"error":"%d"}`
 )
+
+type QueryPayMsg struct {
+	ch  chan bool
+	uid string
+	ok  bool
+}
 
 //用户注册服务器
 type RegistServer struct {
 	muxRegist sync.Mutex
+	muxPay    sync.Mutex
 	mapTime   map[string]int64  //验证码时间
 	mapVeri   map[string]string //验证码
+	mapOrder  map[string]string //[orderid]uid
+	mapScore  map[string]int    //dingdan /fenzhi
 }
 
 var GRegistServer = &RegistServer{}
@@ -42,14 +58,95 @@ func (this *RegistServer) Start() error {
 	rand.Seed(time.Now().UnixNano())
 	this.mapTime = make(map[string]int64)
 	this.mapVeri = make(map[string]string)
-	http.HandleFunc("/regist", this.CRegist)     //注册
-	http.HandleFunc("/login", this.CLogin)       //登陆
-	http.HandleFunc("/version", this.CVersion)   //版本查询
-	http.HandleFunc("/password", this.CPassword) //修改密码
-	http.HandleFunc("/verify", this.CVerify)     //获取验证码
-	http.HandleFunc("/pay", this.CPayCenter)     //充值
+	this.mapOrder = make(map[string]string)
+	this.mapScore = make(map[string]int)
+	http.HandleFunc("/regist", this.CRegist)        //注册
+	http.HandleFunc("/login", this.CLogin)          //登陆
+	http.HandleFunc("/version", this.CVersion)      //版本查询
+	http.HandleFunc("/password", this.CPassword)    //修改密码
+	http.HandleFunc("/verify", this.CVerify)        //获取验证码
+	http.HandleFunc("/pay", this.CPayCenter)        //充值
+	http.HandleFunc("/pay_verify", this.CPayVerify) //充值验证
 	http.Handle("/", http.FileServer(http.Dir("web")))
 	return http.ListenAndServe(":51888", nil)
+}
+
+//处理充值请求
+func (this *RegistServer) CPayCenter(rw http.ResponseWriter, req *http.Request) {
+	user := req.FormValue("user")
+	pass := req.FormValue("pass")
+	pay := req.FormValue("type")
+	opt := req.FormValue("opt")
+
+	money := 0
+	score := 0
+	switch pay {
+	case "1":
+		money = 5
+		score = 500
+	case "2":
+		money = 20
+		score = 2400
+	case "3":
+		money = 100
+		score = 14000
+	case "4":
+		money = 600
+		score = 96000
+	}
+	if money == 0 {
+		fmt.Fprintf(rw, rpy_pay_fmt, err_pay_format)
+		return
+	}
+	if code := this.CheckUserPassNick(user, pass, "hello"); code != err_code_ok {
+		fmt.Fprintf(rw, rpy_pay_fmt, err_pay_format)
+		return
+	}
+
+	log.Println(`[pay] 用户充值`, req.RemoteAddr, user)
+
+	code, uid, orderid := this.Login(user, pass)
+	if code != err_code_ok {
+		fmt.Fprintf(rw, rpy_pay_fmt, err_pay_login)
+		return
+	}
+	log.Println("充值登陆成功")
+
+	this.muxPay.Lock()
+	defer this.muxPay.Unlock()
+	this.mapOrder[orderid] = uid
+	this.mapScore[orderid] = score
+	//充值
+	urlpay := Pay(orderid, money, opt)
+	fmt.Fprintf(rw, "%s", urlpay)
+}
+
+//充值验证
+func (this *RegistServer) CPayVerify(rw http.ResponseWriter, req *http.Request) {
+	code := req.FormValue("returncode")
+	orderid := req.FormValue("orderid")
+	money := req.FormValue("money")
+	sig := req.FormValue("sign")
+	log.Println("收到订单回调", req.RequestURI)
+
+	this.muxPay.Lock()
+	defer this.muxPay.Unlock()
+	uid, ok := this.mapOrder[orderid]
+	if !ok {
+		log.Println("异常订单：", orderid)
+		fmt.Fprintf(rw, "success")
+		return
+	}
+	if code == "1" && CheckSig(code, orderid, money, sig) {
+		log.Println("订单成功！", orderid, money)
+		if strings.Contains(money, ".00") {
+			GDBOpt.PutValue([]byte(fmt.Sprintf(`%s_%s`, uid, orderid)), []byte(money))
+			GHall.AddScore(this.mapScore[orderid], uid)
+			fmt.Fprintf(rw, "success")
+			return
+		}
+	}
+	fmt.Fprintf(rw, "充值成功！请重新登陆游戏查看积分，如有异常请联系QQ群管理员。")
 }
 
 //获取验证码
@@ -149,17 +246,6 @@ func (this *RegistServer) CRegist(rw http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(rw, `{"error":"%d"}`, this.Regist(user, pass, nick, sex))
 }
 
-//处理充值请求
-func (this *RegistServer) CPayCenter(rw http.ResponseWriter, req *http.Request) {
-	player := req.FormValue("player")
-	ptype := req.FormValue("paytype")
-	checkid := req.FormValue("checkid")
-	sessionid := req.FormValue("cookies")
-
-	payNum := CheckPay(ptype)
-	log.Println(player, payNum, checkid, sessionid)
-}
-
 //注册逻辑函数
 func (this *RegistServer) Regist(username, pass, nick, sex string) int {
 
@@ -188,11 +274,12 @@ func (this *RegistServer) Regist(username, pass, nick, sex string) int {
 	mInfo[fmt.Sprintf(`%s_pass`, uid)] = []byte(pass)
 	mInfo[fmt.Sprintf(`%s_regtime`, uid)] = []byte(now)
 	mInfo[fmt.Sprintf(`%s_nick`, uid)] = []byte(nick)
-	mInfo[fmt.Sprintf(`%s_score`, uid)] = []byte("500")
+	mInfo[fmt.Sprintf(`%s_score`, uid)] = []byte("200")
 	mInfo[fmt.Sprintf(`%s_win`, uid)] = []byte("0")
 	mInfo[fmt.Sprintf(`%s_lose`, uid)] = []byte("0")
 	mInfo[fmt.Sprintf(`%s_run`, uid)] = []byte("0")
 	mInfo[fmt.Sprintf(`%s_he`, uid)] = []byte("0")
+	mInfo[fmt.Sprintf(`%s_zong`, uid)] = []byte("0")
 	mInfo[fmt.Sprintf(`%s_regtime`, uid)] = []byte(time.Now().String())
 	//默认男性
 	if sex == "1" {
@@ -238,7 +325,7 @@ func (this *RegistServer) Login(username, pass string) (int, string, string) {
 		return err_code_noexist, "", ""
 	}
 
-	loginkey := fmt.Sprintf(`%x`, md5.Sum([]byte(username+pass+time.Now().String())))
+	loginkey := fmt.Sprintf(`%d%x`, time.Now().Unix(), md5.Sum([]byte(username+pass+time.Now().String())))
 	return err_code_ok, string(uid[:]), loginkey
 }
 

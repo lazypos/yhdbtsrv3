@@ -1,6 +1,7 @@
 package yhdbt
 
 import (
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -188,4 +189,24 @@ func (this *HallManger) QueryPlayerCounts() int {
 	this.muxHall.Lock()
 	defer this.muxHall.Unlock()
 	return len(this.MapPlayers)
+}
+
+func (this *HallManger) AddScore(n int, uid string) bool {
+	this.muxHall.Lock()
+	defer this.muxHall.Unlock()
+	pinfo, ok := this.MapPlayers[uid]
+	if ok && pinfo != nil {
+		pinfo.Score += n
+		if err := GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_score`, uid)), pinfo.Score); err != nil {
+			log.Println(`[充值] save player score error:`, uid, pinfo.Score)
+		}
+		return true
+	}
+	Score := GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_score`, uid)))
+	Score += n
+	log.Println(`uid 当前积分`, Score-n, "充值后：", Score)
+	if err := GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_score`, uid)), Score); err != nil {
+		log.Println(`[充值] save player score error:`, uid, Score)
+	}
+	return true
 }
