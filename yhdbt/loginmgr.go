@@ -20,14 +20,12 @@ type LoginManager struct {
 	muxLoginKey sync.Mutex
 	muxPlayers  sync.Mutex
 	loginPool   *sync.Pool
-	//playerPool  *sync.Pool
 }
 
 var GLogin = &LoginManager{}
 
 func (this *LoginManager) Start() {
 	this.loginPool = &sync.Pool{New: func() interface{} { return new(loginInfo) }}
-	//this.playerPool = &sync.Pool{New: func() interface{} { return new(PlayerInfo) }}
 	this.MapPlayers = make(map[string]*PlayerInfo)
 	this.MapLoginKey = make(map[string]*loginInfo)
 	go this.Routine_CheckTimeOut()

@@ -29,6 +29,12 @@ const (
 	err_pay_login  = 21 // 充值登陆错误
 	err_pay_busy   = 22
 	err_pay_system = 23 //系统错误
+
+	err_modify_noexist = 30 //手机号不存在
+	err_modify_format  = 31 //手机号格式不正确
+	err_modify_verify  = 32 //验证码不对
+	err_modify_busy    = 33 //验证码频繁
+	err_modify_system  = 34 //系统错误
 )
 
 const (
@@ -63,6 +69,7 @@ func (this *RegistServer) Start() error {
 	http.HandleFunc("/regist", this.CRegist)        //注册
 	http.HandleFunc("/login", this.CLogin)          //登陆
 	http.HandleFunc("/version", this.CVersion)      //版本查询
+	http.HandleFunc("/modify", this.CModify)        //修改密码验证码
 	http.HandleFunc("/password", this.CPassword)    //修改密码
 	http.HandleFunc("/verify", this.CVerify)        //获取验证码
 	http.HandleFunc("/pay", this.CPayCenter)        //充值
@@ -197,9 +204,85 @@ func (this *RegistServer) CVerify(rw http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(rw, `{"error":"%d"}`, err_code_ok)
 }
 
+//修改密码验证码
+func (this *RegistServer) CModify(rw http.ResponseWriter, req *http.Request) {
+	this.muxRegist.Lock()
+	defer this.muxRegist.Unlock()
+
+	log.Println(`修改密码验证码,`, req.RemoteAddr)
+
+	user := req.FormValue("phone")
+	//验证手机号
+	if err := CheckUser(user); err != nil {
+		fmt.Fprintf(rw, `{"error":"%d"}`, err_modify_format)
+		return
+	}
+
+	//是否频繁
+	now := time.Now().Unix()
+	t, ok := this.mapTime[user]
+	if ok && now-t < 180 {
+		fmt.Fprintf(rw, `{"error":"%d"}`, err_modify_busy)
+		return
+	}
+	this.mapTime[user] = now
+
+	//是否已经注册过
+	ouid := GDBOpt.GetValue([]byte(user))
+	if len(ouid) == 0 {
+		log.Println(`修改密码手机号不存在.`, user)
+		fmt.Fprintf(rw, `{"error":"%d"}`, err_modify_noexist)
+		return
+	}
+
+	//发送短信
+	n := time.Now().Unix() + rand.Int63()
+	veri := fmt.Sprintf("%6.d", n)[:6]
+	log.Println(`[REGIST] `, user, "验证码", veri)
+	if !SendSMS(user, veri) {
+		fmt.Fprintf(rw, `{"error":"%d"}`, err_modify_busy)
+		return
+	}
+	this.mapVeri[user] = veri
+	fmt.Fprintf(rw, `{"error":"%d"}`, 0)
+}
+
 //修改密码
 func (this *RegistServer) CPassword(rw http.ResponseWriter, req *http.Request) {
+	this.muxRegist.Lock()
+	defer this.muxRegist.Unlock()
 
+	user := req.FormValue("user")
+	pass := req.FormValue("pass")
+	veri := req.FormValue("veri")
+	log.Println("修改密码：", user)
+
+	v, ok := this.mapVeri[user]
+	if !ok || v != veri {
+		log.Println(`[修改密码：] 验证码错误`, user)
+		fmt.Fprintf(rw, `{"error":"%d"}`, err_modify_verify)
+		return
+	}
+
+	if code := this.CheckUserPassNick(user, pass, "hello"); code != err_code_ok {
+		fmt.Fprintf(rw, `{"error":"%d"}`, err_modify_format)
+		return
+	}
+	// 修改密码
+	//拿UID
+	uid := GDBOpt.GetValue([]byte(user))
+	if len(uid) == 0 {
+		fmt.Fprintf(rw, `{"error":"%d"}`, err_modify_noexist)
+		return
+	}
+	//修改密码
+	if err := GDBOpt.PutValue([]byte(fmt.Sprintf(`%s_pass`, uid)), []byte(pass)); err != nil {
+		log.Println(`修改密码失败:`, uid, pass)
+		fmt.Fprintf(rw, `{"error":"%d"}`, err_modify_system)
+		return
+	}
+
+	fmt.Fprintf(rw, `{"error":"%d"}`, 0)
 }
 
 //检查用户密码

@@ -45,6 +45,7 @@ type DeskMnager struct {
 	DeskNum     int           //桌好
 	bPlaying    bool          //是否在游戏
 	MapAddTimes map[int]int64 //玩家加入桌子的时间
+	bCreate     bool          //是否是创建的
 
 	muxDesk     sync.Mutex
 	chDeskBoard chan bool
@@ -58,6 +59,7 @@ func (this *DeskMnager) InitDesk(id int) {
 	this.DeskNum = id
 	this.bPlaying = false
 	this.baseScore = 10
+	this.bCreate = false
 	this.arrPlayers = make([]*PlayerInfo, max_players)
 	go this.Routine_Board()
 }
@@ -343,6 +345,7 @@ func (this *DeskMnager) broadDeskInfo() {
 	for _, p := range this.arrPlayers {
 		if p != nil {
 			p.SendMessage(fmt.Sprintf(fmt_change, buf.String()))
+			log.Println(fmt.Sprintf(fmt_change, buf.String()))
 		}
 	}
 }
@@ -372,7 +375,7 @@ func (this *DeskMnager) KickPlayer() {
 }
 
 // 游戏开始
-func (this *DeskMnager) GmeStart() {
+func (this *DeskMnager) GmeStart(n int) {
 	// 初始化
 	this.nLastPutSit = -1
 	this.nLastCards = []int{}
@@ -387,12 +390,26 @@ func (this *DeskMnager) GmeStart() {
 		this.arrPlayers[i].Ready = 0
 	}
 
+	//随机调整位置
+	p0 := GRand.Intn(3)
+	p1 := GRand.Intn(3)
+	if p0 != p1 {
+		log.Println("调整座位", p0, p1)
+		this.arrPlayers[p0], this.arrPlayers[p1] = this.arrPlayers[p1], this.arrPlayers[p0]
+		this.arrPlayers[p0].SiteNum = p0
+		this.arrPlayers[p1].SiteNum = p1
+		for _, p := range this.arrPlayers {
+			p.SendMessage(fmt.Sprintf(fmt_site_change, p0, p1))
+		}
+		this.ToBroadInfo()
+	}
+
 	// 发牌
 	arrCards, arrCardsint := Create4Cards()
 	for i, p := range this.arrPlayers {
 		this.arrPlayers[i].ArrCards = arrCardsint[i]
 		log.Println(this.arrPlayers[i].ArrCards)
-		p.SendMessage(fmt.Sprintf(fmt_start, arrCards[i]))
+		p.SendMessage(fmt.Sprintf(fmt_start, arrCards[i], n))
 	}
 	put := GRand.Intn(3)
 	this.nLastPutSit = put
@@ -408,20 +425,28 @@ func (this *DeskMnager) OnReady() {
 		return
 	}
 	// 是否全准备
+	lowscore := 500 //最低分
 	var allReady = true
 	for i := 0; i < 4; i++ {
-		if this.arrPlayers[i] == nil || this.arrPlayers[i].Ready == 0 {
+		p := this.arrPlayers[i]
+		if p == nil || p.Ready == 0 {
 			allReady = false
 			break
+		}
+		if p != nil {
+			if p.Score < lowscore {
+				lowscore = p.Score
+			}
 		}
 	}
 	if !allReady {
 		this.ToBroadInfo()
 		return
 	}
-
-	//游戏开始
-	this.GmeStart()
+	//算底分
+	this.baseScore = 10 + lowscore/200
+	log.Println("本局底分：", this.baseScore, this.DeskNum)
+	this.GmeStart(this.baseScore)
 }
 
 func (this *DeskMnager) Empty() bool {

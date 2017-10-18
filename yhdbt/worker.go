@@ -26,7 +26,7 @@ func (this *Worker) Start() {
 
 // 间隔更新线程
 func (this *Worker) Routine_worker() {
-	rankTicker := time.NewTicker(time.Hour * 6)
+	rankTicker := time.NewTicker(time.Hour * 1)
 
 	for {
 		select {

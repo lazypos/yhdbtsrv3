@@ -99,8 +99,10 @@ func (this *DBOpt) GetMaxScore(max int) ([]*RankScoreInfo, error) {
 		if idx > 0 {
 			n, err := strconv.Atoi(string(iter.Value()[:]))
 			if err != nil {
+				log.Println(err)
 				continue
 			}
+			//log.Println(string(iter.Key()[:]), string(iter.Value()[:]))
 			uid := string(key[:idx])
 			if count < 5 {
 				arr[count] = n
@@ -116,11 +118,13 @@ func (this *DBOpt) GetMaxScore(max int) ([]*RankScoreInfo, error) {
 				count++
 			} else {
 				if n >= lowLevel {
-					lowLevel = n
 					sort.Ints(arr)
 					low := arr[0]
+					//log.Println(arr, low, n)
 					if n > low {
 						arr[0] = n
+						sort.Ints(arr)
+						lowLevel = arr[0]
 						for i, v := range m {
 							if v.Score == low {
 								nick := string(this.GetValue([]byte(fmt.Sprintf(`%s_nick`, uid)))[:])
@@ -148,7 +152,7 @@ func (this *DBOpt) GetMaxScore(max int) ([]*RankScoreInfo, error) {
 		for _, v := range m {
 			//log.Println(v.Nick, v.Score, v.Uid)
 			if v.Score == nowScore {
-				log.Println(i, nowScore, v.Nick, v.Score, v.Uid)
+				//log.Println(i, nowScore, v.Nick, v.Score, v.Uid)
 				rst[i] = &RankScoreInfo{socre: fmt.Sprintf(`%d`, nowScore), nick: v.Nick}
 				v.Score = -1
 				break

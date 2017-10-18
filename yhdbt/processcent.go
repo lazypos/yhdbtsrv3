@@ -33,9 +33,9 @@ const (
 // 回复信息
 const (
 	// 查询版本号
-	fmt_query_version = `{"opt":"version","version":"63"}`
-	// 查询在线
-	fmt_query_online = `{"opt":"online","count":"%d"}`
+	fmt_query_version = `{"opt":"version","version":"65"}`
+	// 查询在线, 返回在线人数和在玩的桌子数
+	fmt_query_online = `{"opt":"online","count":"%d","desk":"%d"}`
 	// 查询排行榜 昵称和分数
 	fmt_query_rank     = `{"opt":"rank","info":[%s]}`
 	fmt_query_rank_sub = `{"id":"%d","nick":"%s","score":"%s"},`
@@ -54,7 +54,7 @@ const (
 	//{"site":"2","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d"},
 	//{"site":"3","name":"%s","ready":"%d","score":"%d","win":"%d","lose":"%d","run":"%d"}
 	// 游戏开始
-	fmt_start = `{"opt":"start","cards":"%s"}`
+	fmt_start = `{"opt":"start","cards":"%s","base":"%d"}`
 	// 玩家逃跑 扣多少分
 	fmt_run = `{"opt":"run","site":"%d","name":"%s","score":"%d"}`
 	// 游戏结束
@@ -78,6 +78,8 @@ const (
 	fmt_plyer_info = `{"opt":"login","nick":"%s","score":"%d","win":"%d","lose":"%d","run":"%d","sex":"%d","he":"%d","zong":"%d"}`
 	// 积分不够
 	fmt_score_less = `{"opt":"less"}`
+	// 开局前位置变换
+	fmt_site_change = `{"opt":"site","p0":"%d","p1":"%d"}`
 )
 
 type QueryMessage struct {
@@ -131,7 +133,7 @@ func (this *ProcessCent) ProcessCmd(cmd int, text string, p *PlayerInfo) error {
 		return this.prcess_error(p)
 	}
 	log.Println(`[PROCESS] unknow cmd`, cmd)
-	return fmt.Errorf(`[PROCESS] unknow cmd`)
+	return fmt.Errorf(`[PROCESS] unknow cmd %v`, cmd)
 }
 
 func (this *ProcessCent) prcess_query_self(p *PlayerInfo) error {
@@ -148,8 +150,8 @@ func (this *ProcessCent) prcess_error(p *PlayerInfo) error {
 
 //在线人数
 func (this *ProcessCent) process_online(p *PlayerInfo) error {
-	n := GHall.QueryPlayerCounts()
-	p.SendMessage(fmt.Sprintf(fmt_query_online, n))
+	n, d := GHall.QueryPlayerCounts()
+	p.SendMessage(fmt.Sprintf(fmt_query_online, n, d))
 	return nil
 }
 

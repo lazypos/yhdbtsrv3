@@ -17,11 +17,13 @@ type HallManger struct {
 	chBroad    chan string
 	MapPlayers map[string]*PlayerInfo //uid
 	MapDesks   map[int]*DeskMnager    //桌子
+	bPlaying   int                    //正在游戏的桌子数
 }
 
 var GHall = &HallManger{}
 
 func (this *HallManger) Start() {
+	this.bPlaying = 0
 	this.chBroad = make(chan string, 1000)
 	this.MapPlayers = make(map[string]*PlayerInfo)
 	this.MapDesks = make(map[int]*DeskMnager)
@@ -51,11 +53,11 @@ func (this *HallManger) Routine_Broadcast() {
 	for {
 		select {
 		case <-ticker.C:
-			this.broadHallInfo() // 广播大厅基本信息
+			this.cleanDesk() //定时清理空桌子
 		case msg := <-this.chBroad:
-			this.broadMessage(msg) // 广播实时信息
+			this.broadMessage(msg) //广播实时信息
 		case <-breakTicker.C:
-			this.checkBreak() // 断线检测
+			this.checkBreak() //断线检测
 		}
 	}
 }
@@ -64,15 +66,21 @@ func (this *HallManger) broadMessage(msg string) {
 
 }
 
-func (this *HallManger) broadHallInfo() {
-	//删除没人的桌子
+func (this *HallManger) cleanDesk() {
+	//删除没人的桌子, 统计正在游戏的桌子
 	this.muxHall.Lock()
 	defer this.muxHall.Unlock()
+
+	bplay := 0
 	for k, d := range this.MapDesks {
 		if d.Empty() {
 			delete(this.MapDesks, k)
 		}
+		if d.bPlaying {
+			bplay += 1
+		}
 	}
+	this.bPlaying = bplay
 }
 
 //断线检测
@@ -137,9 +145,12 @@ func (this *HallManger) FastAddDesk(p *PlayerInfo) (*DeskMnager, int) {
 
 	//先找有人的桌子
 	for _, d := range this.MapDesks {
-		site := d.AddPlayer(p)
-		if site != -1 {
-			return d, site
+		//创建的桌子不支持快速加入
+		if !d.bCreate {
+			site := d.AddPlayer(p)
+			if site != -1 {
+				return d, site
+			}
 		}
 	}
 
@@ -185,10 +196,10 @@ func (this *HallManger) GetDesk(Dnum int) *DeskMnager {
 	return this.MapDesks[Dnum]
 }
 
-func (this *HallManger) QueryPlayerCounts() int {
+func (this *HallManger) QueryPlayerCounts() (int, int) {
 	this.muxHall.Lock()
 	defer this.muxHall.Unlock()
-	return len(this.MapPlayers)
+	return len(this.MapPlayers), this.bPlaying
 }
 
 func (this *HallManger) AddScore(n int, uid string) bool {

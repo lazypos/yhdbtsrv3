@@ -149,7 +149,7 @@ func (this *PlayerInfo) PutCards(cards []int) (int, error) {
 		}
 	}
 	this.ArrCards = tmp
-	log.Println(this.Conn.RemoteAddr().String(), "出牌后", this.ArrCards)
+	//log.Println(this.Conn.RemoteAddr().String(), "出牌后", this.ArrCards)
 
 	return score, nil
 }
