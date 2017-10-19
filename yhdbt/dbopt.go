@@ -174,9 +174,9 @@ func (this *DBOpt) test() {
 	ioutil.WriteFile("f:/test/a.txt", buf.Bytes(), 0x666)
 }
 
-func ParseDB(dbPath string) {
+func ParseDB() {
 	dbopt := &DBOpt{}
-	dbopt.Open(dbPath)
+	dbopt.Open("f:/test/yhdbt_db")
 	dbopt.test()
 	defer dbopt.Close()
 }

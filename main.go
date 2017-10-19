@@ -9,7 +9,7 @@ import (
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	flog, _ := os.OpenFile("yhdbt.log", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0x666)
-	log.SetOutput(flog)
+	//log.SetOutput(flog)
 	log.SetFlags(log.LstdFlags)
 	defer flog.Close()
 
@@ -19,6 +19,9 @@ func main() {
 		return
 	}
 	defer yhdbt.GDBOpt.Close()
+
+	// yhdbt.ParseDB()
+	// return
 
 	yhdbt.GProcess.Init()
 	yhdbt.GLogin.Start()

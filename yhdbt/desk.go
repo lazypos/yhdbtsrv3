@@ -345,7 +345,7 @@ func (this *DeskMnager) broadDeskInfo() {
 	for _, p := range this.arrPlayers {
 		if p != nil {
 			p.SendMessage(fmt.Sprintf(fmt_change, buf.String()))
-			log.Println(fmt.Sprintf(fmt_change, buf.String()))
+			//log.Println(fmt.Sprintf(fmt_change, buf.String()))
 		}
 	}
 }
@@ -413,6 +413,7 @@ func (this *DeskMnager) GmeStart(n int) {
 	}
 	put := GRand.Intn(3)
 	this.nLastPutSit = put
+	this.nNowPutSit = put
 	for _, p := range this.arrPlayers {
 		p.SendMessage(fmt.Sprintf(fmt_game_put, -1, "", 54, 0, put, 1))
 	}
@@ -444,7 +445,7 @@ func (this *DeskMnager) OnReady() {
 		return
 	}
 	//算底分
-	this.baseScore = 10 + lowscore/200
+	this.baseScore = 10 + (lowscore/200)*10
 	log.Println("本局底分：", this.baseScore, this.DeskNum)
 	this.GmeStart(this.baseScore)
 }

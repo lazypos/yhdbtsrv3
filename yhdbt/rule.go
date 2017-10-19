@@ -197,6 +197,13 @@ func IsOver(s0, s1 int, info []int) (bool, []int) {
 				return true, []int{-1, 1, -1, 1}
 			}
 		}
+		//其他情况下，乌龟的一家算输一局
+		if info[0] == -1 || info[2] == -1 {
+			return true, []int{-1, 1, -1, 1}
+		}
+		if info[1] == -1 || info[3] == -1 {
+			return true, []int{1, -1, 1, -1}
+		}
 		return true, []int{0, 0, 0, 0}
 	}
 	return false, []int{}
