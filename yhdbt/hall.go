@@ -95,6 +95,7 @@ func (this *HallManger) checkBreak() {
 				desk := this.MapDesks[p.DeskNum]
 				desk.LeavePlayer(p)
 				desk.ToBroadInfo()
+				p.Conn.Close()
 			} else {
 				delete(this.MapPlayers, p.Uid)
 				log.Println(`[HALL] player leave:`, p.Conn.RemoteAddr().String())

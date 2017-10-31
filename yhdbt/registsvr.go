@@ -393,7 +393,7 @@ func (this *RegistServer) CLogin(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 	GLogin.SaveLoginKey(loginKey, uid)
-	log.Println(`[REGIST] login ok`, loginKey, uid)
+	log.Println(`[REGIST] login ok`, user, loginKey, uid)
 	fmt.Fprintf(rw, rpy_login_fmt, err_code_ok, loginKey)
 }
 

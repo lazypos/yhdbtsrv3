@@ -104,6 +104,11 @@ func (this *DBOpt) GetMaxScore(max int) ([]*RankScoreInfo, error) {
 			}
 			//log.Println(string(iter.Key()[:]), string(iter.Value()[:]))
 			uid := string(key[:idx])
+			//必须要玩过一局
+			zong := this.GetValueAsInt([]byte(fmt.Sprintf(`%s_win`, uid)))
+			if zong == 0 {
+				continue
+			}
 			if count < 5 {
 				arr[count] = n
 				if lowLevel < 0 {

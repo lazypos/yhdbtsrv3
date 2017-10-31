@@ -43,7 +43,7 @@
 			return;
 		}
 		nick = $("#nickname").val();
-		if( nick == "" || nick.length < 4 || nick.length > 12){
+		if( nick == "" || getLength(nick) < 4 || getLength(nick) > 12){
 			$("#msg").html("昵称长度不对 （4-12个字符，一个中文算2个字符）.");
 			return;
 		}

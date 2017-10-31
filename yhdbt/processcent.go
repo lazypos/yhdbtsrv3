@@ -106,9 +106,9 @@ func (this *ProcessCent) Init() {
 func (this *ProcessCent) ProcessCmd(cmd int, text string, p *PlayerInfo) error {
 	//更新在线时间
 	p.LastOnline = time.Now().Unix()
-	if cmd != cmd_query_online && cmd != cmd_heart {
-		log.Println(`[PROCESS] recv cmd:`, cmd, string(text[:]))
-	}
+	// if cmd != cmd_query_online && cmd != cmd_heart {
+	// 	log.Println(`[PROCESS] recv cmd:`, cmd, string(text[:]))
+	// }
 
 	switch cmd {
 	case cmd_query_version:
