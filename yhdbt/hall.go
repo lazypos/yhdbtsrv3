@@ -18,6 +18,7 @@ type HallManger struct {
 	MapPlayers map[string]*PlayerInfo //uid
 	MapDesks   map[int]*DeskMnager    //桌子
 	bPlaying   int                    //正在游戏的桌子数
+	Notice     string                 //公告
 }
 
 var GHall = &HallManger{}
@@ -27,6 +28,7 @@ func (this *HallManger) Start() {
 	this.chBroad = make(chan string, 1000)
 	this.MapPlayers = make(map[string]*PlayerInfo)
 	this.MapDesks = make(map[int]*DeskMnager)
+	this.Notice = ""
 	go this.Routine_Broadcast()
 }
 

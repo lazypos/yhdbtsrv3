@@ -23,6 +23,7 @@ const (
 	cmd_add_hall      = 0x1009 //加入大厅
 	cmd_query_self    = 0x1010 //查询自己信息
 	cmd_exit          = 0x1011 //退出
+	cmd_query_notice  = 0x1012 //请求公告信息
 )
 
 const (
@@ -33,7 +34,7 @@ const (
 // 回复信息
 const (
 	// 查询版本号
-	fmt_query_version = `{"opt":"version","version":"65"}`
+	fmt_query_version = `{"opt":"version","version":"70"}`
 	// 查询在线, 返回在线人数和在玩的桌子数
 	fmt_query_online = `{"opt":"online","count":"%d","desk":"%d"}`
 	// 查询排行榜 昵称和分数
@@ -80,6 +81,9 @@ const (
 	fmt_score_less = `{"opt":"less"}`
 	// 开局前位置变换
 	fmt_site_change = `{"opt":"site","p0":"%d","p1":"%d"}`
+	// 公告
+	// 开局前位置变换
+	fmt_notice = `{"opt":"notice","content":"%s"}`
 )
 
 type QueryMessage struct {
@@ -129,11 +133,20 @@ func (this *ProcessCent) ProcessCmd(cmd int, text string, p *PlayerInfo) error {
 		return this.process_online(p)
 	case cmd_query_self:
 		return this.prcess_query_self(p)
+	case cmd_query_notice:
+		return this.prcess_query_notice(p)
 	default:
 		return this.prcess_error(p)
 	}
 	log.Println(`[PROCESS] unknow cmd`, cmd)
 	return fmt.Errorf(`[PROCESS] unknow cmd %v`, cmd)
+}
+
+func (this *ProcessCent) prcess_query_notice(p *PlayerInfo) error {
+	if len(GHall.Notice) > 0 {
+		p.SendMessage(fmt.Sprintf(fmt_notice, GHall.Notice))
+	}
+	return nil
 }
 
 func (this *ProcessCent) prcess_query_self(p *PlayerInfo) error {
