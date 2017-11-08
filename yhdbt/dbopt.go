@@ -31,6 +31,10 @@ func (this *DBOpt) Close() {
 	this.DBConn = nil
 }
 
+func (this *DBOpt) Flush() {
+
+}
+
 func (this *DBOpt) GetValue(key []byte) []byte {
 	if data, err := this.DBConn.Get([]byte(key), nil); err != nil {
 		log.Println(`[BDOPT] Get error:`, err)

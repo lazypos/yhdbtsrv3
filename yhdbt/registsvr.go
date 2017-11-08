@@ -11,7 +11,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
-	"strings"
+	//"strings"
 	"sync"
 	"time"
 )
@@ -92,14 +92,14 @@ func (this *RegistServer) CPayCenter(rw http.ResponseWriter, req *http.Request) 
 		money = 5
 		score = 500
 	case "2":
-		money = 20
-		score = 2400
+		money = 30
+		score = 3600
 	case "3":
 		money = 100
 		score = 14000
 	case "4":
-		money = 600
-		score = 96000
+		money = 500
+		score = 80000
 	}
 	if money == 0 {
 		fmt.Fprintf(rw, rpy_pay_fmt, err_pay_format)
@@ -130,14 +130,15 @@ func (this *RegistServer) CPayCenter(rw http.ResponseWriter, req *http.Request) 
 
 //充值验证
 func (this *RegistServer) CPayVerify(rw http.ResponseWriter, req *http.Request) {
+	this.muxPay.Lock()
+	defer this.muxPay.Unlock()
+
 	code := req.FormValue("returncode")
 	orderid := req.FormValue("orderid")
 	money := req.FormValue("money")
 	sig := req.FormValue("sign")
 	log.Println("收到订单回调", req.RequestURI)
 
-	this.muxPay.Lock()
-	defer this.muxPay.Unlock()
 	uid, ok := this.mapOrder[orderid]
 	if !ok {
 		log.Println("异常订单：", orderid)
@@ -146,14 +147,15 @@ func (this *RegistServer) CPayVerify(rw http.ResponseWriter, req *http.Request) 
 	}
 	if code == "1" && CheckSig(code, orderid, money, sig) {
 		log.Println("订单成功！", orderid, money)
-		if strings.Contains(money, ".00") {
+		data := GDBOpt.GetValue([]byte(fmt.Sprintf(`%s_%s`, uid, orderid)))
+		if len(data) == 0 {
 			GDBOpt.PutValue([]byte(fmt.Sprintf(`%s_%s`, uid, orderid)), []byte(money))
 			GHall.AddScore(this.mapScore[orderid], uid)
-			fmt.Fprintf(rw, "success")
-			return
 		}
+		fmt.Fprintf(rw, "success，充值成功！请重新登陆游戏查看积分，如有异常请联系QQ群管理员。")
+		return
 	}
-	fmt.Fprintf(rw, "充值成功！请重新登陆游戏查看积分，如有异常请联系QQ群管理员。")
+	fmt.Fprintf(rw, "success 充值异常.请稍后再试")
 }
 
 //获取验证码

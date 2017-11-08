@@ -34,9 +34,9 @@ const (
 // 回复信息
 const (
 	// 查询版本号
-	fmt_query_version = `{"opt":"version","version":"70"}`
+	fmt_query_version = `{"opt":"version","version":"71"}`
 	// 查询在线, 返回在线人数和在玩的桌子数
-	fmt_query_online = `{"opt":"online","count":"%d","desk":"%d"}`
+	fmt_query_online = `{"opt":"online","count":"%d","desk":"%d","history":"%d"}`
 	// 查询排行榜 昵称和分数
 	fmt_query_rank     = `{"opt":"rank","info":[%s]}`
 	fmt_query_rank_sub = `{"id":"%d","nick":"%s","score":"%s"},`
@@ -110,9 +110,6 @@ func (this *ProcessCent) Init() {
 func (this *ProcessCent) ProcessCmd(cmd int, text string, p *PlayerInfo) error {
 	//更新在线时间
 	p.LastOnline = time.Now().Unix()
-	// if cmd != cmd_query_online && cmd != cmd_heart {
-	// 	log.Println(`[PROCESS] recv cmd:`, cmd, string(text[:]))
-	// }
 
 	switch cmd {
 	case cmd_query_version:
@@ -163,8 +160,8 @@ func (this *ProcessCent) prcess_error(p *PlayerInfo) error {
 
 //在线人数
 func (this *ProcessCent) process_online(p *PlayerInfo) error {
-	n, d := GHall.QueryPlayerCounts()
-	p.SendMessage(fmt.Sprintf(fmt_query_online, n, d))
+	n, d, c := GHall.QueryPlayerCounts()
+	p.SendMessage(fmt.Sprintf(fmt_query_online, n, d, c))
 	return nil
 }
 

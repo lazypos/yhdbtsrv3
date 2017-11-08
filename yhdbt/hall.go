@@ -13,12 +13,13 @@ const (
 
 //游戏大厅
 type HallManger struct {
-	muxHall    sync.Mutex
-	chBroad    chan string
-	MapPlayers map[string]*PlayerInfo //uid
-	MapDesks   map[int]*DeskMnager    //桌子
-	bPlaying   int                    //正在游戏的桌子数
-	Notice     string                 //公告
+	muxHall     sync.Mutex
+	chBroad     chan string
+	MapPlayers  map[string]*PlayerInfo //uid
+	MapDesks    map[int]*DeskMnager    //桌子
+	bPlaying    int                    //正在游戏的桌子数
+	Notice      string                 //公告
+	TotalCounts int                    //总登陆人次
 }
 
 var GHall = &HallManger{}
@@ -28,7 +29,8 @@ func (this *HallManger) Start() {
 	this.chBroad = make(chan string, 1000)
 	this.MapPlayers = make(map[string]*PlayerInfo)
 	this.MapDesks = make(map[int]*DeskMnager)
-	this.Notice = ""
+	this.Notice = `充值后，确保积分正常，请关闭游戏重新登陆`
+	this.TotalCounts = GDBOpt.GetValueAsInt([]byte("totalcounts"))
 	go this.Routine_Broadcast()
 }
 
@@ -36,6 +38,8 @@ func (this *HallManger) Start() {
 func (this *HallManger) AddPlayer(p *PlayerInfo) {
 	this.muxHall.Lock()
 	defer this.muxHall.Unlock()
+	this.TotalCounts++
+	GDBOpt.PutValueInt([]byte("totalcounts"), this.TotalCounts)
 	this.MapPlayers[p.Uid] = p
 	log.Println(`[HALL] player add:`, p.Conn.RemoteAddr().String())
 }
@@ -200,10 +204,10 @@ func (this *HallManger) GetDesk(Dnum int) *DeskMnager {
 	return this.MapDesks[Dnum]
 }
 
-func (this *HallManger) QueryPlayerCounts() (int, int) {
+func (this *HallManger) QueryPlayerCounts() (int, int, int) {
 	this.muxHall.Lock()
 	defer this.muxHall.Unlock()
-	return len(this.MapPlayers), this.bPlaying
+	return len(this.MapPlayers), this.bPlaying, this.TotalCounts
 }
 
 func (this *HallManger) AddScore(n int, uid string) bool {

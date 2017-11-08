@@ -68,6 +68,15 @@ func (this *TCPServer) processConn(conn net.Conn) {
 		return
 	}
 
+	// 活动, 登陆送积分
+	now := int(time.Now().Unix() % 100000000)
+	lastLogin := GDBOpt.GetValueAsInt([]byte(fmt.Sprintf(`%s_LastLoginTime`, pInfo.Uid)))
+	if now-lastLogin > 36000 {
+		pInfo.Score += 10
+		GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_LastLoginTime`, pInfo.Uid)), now)
+		GDBOpt.PutValueInt([]byte(fmt.Sprintf(`%s_score`, pInfo.Uid)), pInfo.Score)
+	}
+
 	pInfo.SendMessage(fmt.Sprintf(fmt_plyer_info, pInfo.NickName, pInfo.Score, pInfo.Win, pInfo.Lose, pInfo.Run, pInfo.Sex, pInfo.He, pInfo.Zong))
 	// 加入游戏大厅
 	GHall.AddPlayer(pInfo)
