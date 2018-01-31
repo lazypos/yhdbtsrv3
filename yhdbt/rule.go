@@ -94,7 +94,7 @@ func IsBigger(per, now []int) bool {
 		now[i] = int(now1[i])
 	}
 
-	log.Println(per, now)
+	//log.Println(per, now)
 	//当前牌是否合法
 	tnow, wnow := GetType(now)
 	if tnow == type_unknow {

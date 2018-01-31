@@ -29,7 +29,7 @@ func (this *HallManger) Start() {
 	this.chBroad = make(chan string, 1000)
 	this.MapPlayers = make(map[string]*PlayerInfo)
 	this.MapDesks = make(map[int]*DeskMnager)
-	this.Notice = `充值后，确保积分正常，请关闭游戏重新登陆`
+	this.Notice = `必须要获得一盘胜利，才会在排行榜显示`
 	this.TotalCounts = GDBOpt.GetValueAsInt([]byte("totalcounts"))
 	go this.Routine_Broadcast()
 }

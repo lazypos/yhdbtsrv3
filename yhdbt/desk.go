@@ -408,7 +408,7 @@ func (this *DeskMnager) GmeStart(n int) {
 	arrCards, arrCardsint := Create4Cards()
 	for i, p := range this.arrPlayers {
 		this.arrPlayers[i].ArrCards = arrCardsint[i]
-		log.Println(this.arrPlayers[i].ArrCards)
+		//log.Println(this.arrPlayers[i].ArrCards)
 		p.SendMessage(fmt.Sprintf(fmt_start, arrCards[i], n))
 	}
 	put := GRand.Intn(3)
